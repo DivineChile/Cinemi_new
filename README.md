@@ -1,3 +1,6 @@
+# Cinemi_new
+A modern entertainment platform designed to facilitate easy browsing of animes, movies, tv shows and manga / manhwa
+
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
