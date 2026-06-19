@@ -70,7 +70,8 @@ const TOP_ANIME_GENRES = [
   {
     id: "g-historical",
     title: "Historical",
-    poster: "https://unsplash.com",
+    poster:
+      "https://s4.anilist.co/file/anilistcdn/media/anime/banner/206914-owssGq2CGhRZ.jpg",
   },
 ];
 
