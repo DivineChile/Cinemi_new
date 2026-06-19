@@ -3,9 +3,12 @@ import { Link } from "react-router-dom";
 
 function ContentCard({ to, id, poster, title, score, genres }) {
   return (
-    <Link to={to} className="content-card group flex flex-col w-[230px]">
+    <Link
+      to={to}
+      className="content-card group flex flex-col w-[144px] md:w-[230px]"
+    >
       {/* Poster image box frame */}
-      <div className="poster-container w-full h-[345px] relative overflow-hidden rounded-xl bg-gray-900">
+      <div className="poster-container w-full h-[216px] md:h-[345px] relative overflow-hidden rounded-xl bg-gray-900">
         <img
           src={poster}
           alt={title}

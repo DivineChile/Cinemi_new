@@ -21,12 +21,6 @@ function Watching() {
             currentEP="8"
             timeLeft="13s"
           />
-          <WatchCard
-            img={"/src/images/watch1.png"}
-            title="Gals Can't Be Kind to Otaku!"
-            currentEP="8"
-            timeLeft="13s"
-          />
         </div>
       </div>
     </div>

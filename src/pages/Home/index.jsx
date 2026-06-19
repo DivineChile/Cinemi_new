@@ -1,3 +1,5 @@
+import CTA from "../../components/home/CTA";
+import GenreExploration from "../../components/home/GenreExploration";
 import Hero from "../../components/home/Hero";
 import RecentlyAdded from "../../components/home/RecentlyAdded";
 import Recommendations from "../../components/home/Recommendations";
@@ -12,6 +14,8 @@ function Home() {
       <Trending />
       <RecentlyAdded />
       <Recommendations />
+      <GenreExploration />
+      <CTA />
     </div>
   );
 }

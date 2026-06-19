@@ -34,7 +34,6 @@ function Hero() {
           setError(`API request failed with status ${response.status}`);
         }
         const data = await response.json();
-        console.log(data);
 
         // Target the results array, slice the first 10, and structure them
         const rawResults = data.results || data || []; // Fallback depending on your root object mapping
@@ -86,13 +85,10 @@ function Hero() {
     );
   }
 
-  // Handle empty array fallback safely
-  if (slides.length === 0) return null;
-
   if (error) {
     return (
       <div className="hero h-[100vh] w-full bg-[#0a0a0a] flex items-center justify-center">
-        <div className="text-white text-xl font-[Inter]">{error}</div>
+        <div className="text-white text-xl font-[Inter] px-4 text-center">{error}</div>
       </div>
     );
   }

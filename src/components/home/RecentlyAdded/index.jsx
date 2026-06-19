@@ -3,7 +3,7 @@ import { CarouselRow } from "../../ui/CarouselRow";
 function RecentlyAdded() {
   return (
     <CarouselRow
-      endpoint="recent"
+      endpoint="filter?status=RELEASING&sort=POPULARITY_DESC&year=2026"
       title="New This Week"
       seeAllLink="/"
       key="new"
