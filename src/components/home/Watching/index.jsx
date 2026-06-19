@@ -9,18 +9,9 @@ function Watching() {
         </h2>
         <div className="watching-list flex gap-4 overflow-x-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-2">
           {/* Example watching item */}
-          <WatchCard
-            img={"/src/images/watch1.png"}
-            title="Gals Can't Be Kind to Otaku!"
-            currentEP="8"
-            timeLeft="13s"
-          />
-          <WatchCard
-            img={"/src/images/watch1.png"}
-            title="Gals Can't Be Kind to Otaku!"
-            currentEP="8"
-            timeLeft="13s"
-          />
+          <p className="font-[Inter]">
+            When you start streaming an episode, it'll appear here.
+          </p>
         </div>
       </div>
     </div>

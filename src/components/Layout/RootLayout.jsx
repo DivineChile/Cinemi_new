@@ -192,7 +192,7 @@ function RootLayout() {
           </div>
         </footer>
 
-        <div className="bottom-mobile-nav md:hidden border border-white/5 rounded-t-2xl flex justify-between py-5 px-4 fixed z-20 bottom-0 w-full items-center bg-[#1c1b1b]">
+        <div className="bottom-mobile-nav md:hidden border border-white/5 rounded-t-2xl flex justify-between py-4 px-4 fixed z-20 bottom-0 w-full items-center bg-[#1c1b1b]">
           {mobileNavLinks.map((link, i) => {
             const isActive = location.pathname === link.to;
 

@@ -13,7 +13,7 @@ function Home() {
       <Watching />
       <Trending />
       <RecentlyAdded />
-      <Recommendations />
+      {/* <Recommendations /> */}
       <GenreExploration />
       <CTA />
     </div>

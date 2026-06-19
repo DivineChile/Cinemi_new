@@ -21,7 +21,7 @@ function CTA() {
     },
   ];
   return (
-    <div className="py-3 md:py-7 lg:py-10 xl:py-20 bg-(--neutral-color) w-full">
+    <div className="pt-9 pb-28 md:pb- md:py-7 lg:py-10 xl:py-20 bg-(--neutral-color) w-full">
       <div className="max-w-7xl mx-auto px-4">
         <div className="cta-inner flex flex-col lg:flex-row items-center justify-between gap-10 lg:gap-0 px-9 xl:px-10 py-9 xl:py-10 rounded-xl border border-[#5b403f]/10 inset-0 w-full bg-[linear-gradient(to_right,transparent,#151515,rgba(177,18,38,0.1))]">
           <div className="left-area text-left md:text-center lg:text-left flex flex-col gap-5 w-full lg:w-[70%]">

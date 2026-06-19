@@ -56,7 +56,7 @@ export const CarouselRow = ({ title, endpoint, seeAllLink = "/" }) => {
 
         // Dynamic endpoint routing path configuration
         const response = await fetch(`${PROXY_API_URL}/${endpoint}`);
-        if (!response.ok) throw new Error();
+        if (!response.ok) setError(`Failed to load data for: ${title}`);
         const data = await response.json();
 
         const rawResults = data.results || data || [];
@@ -96,7 +96,7 @@ export const CarouselRow = ({ title, endpoint, seeAllLink = "/" }) => {
   }, [endpoint, title]); // Re-fetch smoothly if endpoint ever changes dynamically
 
   return (
-    <div className="carousel-row py-3 md:py-5 lg:py-7 xl:py-10 bg-(--neutral-color) w-full overflow-hidden">
+    <div className="carousel-row py-7 md:py-5 lg:py-7 xl:py-10 bg-(--neutral-color) w-full overflow-hidden">
       {/* Dynamic Header Block Layer */}
       <div className="max-w-7xl mx-auto px-4 mb-4">
         <div className="header flex justify-between items-center">
