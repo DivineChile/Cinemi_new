@@ -1,0 +1,20 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+@import "tailwindcss";
+
+:root {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  --primary-color: #b11226;
+  --secondary-color: #151515;
+  --tetiary-color: #0060b2;
+  --neutral-color: #0a0a0a;
+  --brand-color: #ffb3b0;
+}
+
+body {
+  font-family: "Space Grotesk", sans-serif;
+  background: var(--neutral-color);
+  color: #fff;
+}
