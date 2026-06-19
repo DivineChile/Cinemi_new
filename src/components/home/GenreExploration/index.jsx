@@ -87,7 +87,7 @@ function GenreExploration() {
           {TOP_ANIME_GENRES.map((genre) => (
             <GenreCard
               key={genre.id}
-              to={`/filter?genre=${genre.title}`}
+              to={`/discover?genre=${genre.title}`}
               poster={genre.poster}
               title={genre.title}
               id={genre.id}

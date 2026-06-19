@@ -20,7 +20,7 @@ function Hero() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const PROXY_API_URL = "https://gentle-block-5322.divinechile16.workers.dev";
+  const PROXY_API_URL = import.meta.env.VITE_PROXY_API_URL;
 
   const onSelect = useCallback((emblaApi) => {
     setSelectedIndex(emblaApi.selectedScrollSnap());
@@ -88,7 +88,9 @@ function Hero() {
   if (error) {
     return (
       <div className="hero h-[100vh] w-full bg-[#0a0a0a] flex items-center justify-center">
-        <div className="text-white text-xl font-[Inter] px-4 text-center">{error}</div>
+        <div className="text-white text-xl font-[Inter] px-4 text-center">
+          {error}
+        </div>
       </div>
     );
   }

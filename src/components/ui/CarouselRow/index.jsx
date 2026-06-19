@@ -5,7 +5,7 @@ import useEmblaCarousel from "embla-carousel-react";
 import ContentCard from "../ContentCard";
 
 // Replace this with your actual Cloudflare Worker URL
-const PROXY_API_URL = "https://gentle-block-5322.divinechile16.workers.dev";
+const PROXY_API_URL = import.meta.env.VITE_PROXY_API_URL;
 
 export const CarouselRow = ({ title, endpoint, seeAllLink = "/" }) => {
   const [animeList, setAnimeList] = useState([]);
@@ -73,7 +73,7 @@ export const CarouselRow = ({ title, endpoint, seeAllLink = "/" }) => {
         // 2. Map over the SAFE filtered items instead of rawResults
         const formattedData = filteredResults.map((item) => ({
           id: item.id,
-          to: `/info/${item.id}`,
+          to: `/anime/${item.id}`,
           poster: item.coverImage?.extraLarge || item.coverImage?.large,
           title:
             item.title?.english || item.title?.romaji || item.title?.native,
