@@ -8,6 +8,7 @@ import Profile from "./pages/Profile";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import AnimeDetail from "./pages/AnimeDetail";
+import Stream from "./pages/Stream";
 
 const router = createBrowserRouter([
   {
@@ -33,6 +34,14 @@ const router = createBrowserRouter([
       {
         path: "anime/:animeId",
         element: <AnimeDetail />,
+      },
+      {
+        path: "watch/:id",
+        element: <Stream />,
+      },
+      {
+        path: "watch/:provider/:id/:category/:slug",
+        element: <Stream />,
       },
     ],
   },

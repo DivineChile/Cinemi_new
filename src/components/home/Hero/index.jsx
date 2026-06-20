@@ -220,7 +220,7 @@ function Hero() {
 
           <div className="buttons flex flex-col sm:flex-row gap-4 items-center">
             <Link
-              to={`/anime/${slides[selectedIndex].id}`}
+              to={`/watch/${slides[selectedIndex].id}`}
               className="button flex gap-3 w-full sm:w-fit text-[16px] md:text-[14px] justify-center items-center bg-(--primary-color) font-[Inter] text-[14px] uppercase py-4 sm:py-3 px-6 rounded-sm"
             >
               <img

@@ -39,3 +39,14 @@ body {
     opacity: 0.42;
   }
 }
+
+@keyframes slide-down {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
