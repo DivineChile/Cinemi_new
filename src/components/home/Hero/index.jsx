@@ -112,7 +112,7 @@ function Hero() {
                 alt={slide.title}
                 // Native Lazy Loading (Eager for slide 1 to prevent layout shift, lazy for others)
                 loading={index === 0 ? "eager" : "lazy"}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover transition-all duration-300"
               />
             </div>
           ))}
@@ -176,16 +176,24 @@ function Hero() {
           <div className="buttons flex flex-col sm:flex-row gap-4 items-center">
             <Link
               to={`/anime/${slides[selectedIndex].id}`}
-              className="button flex gap-3 w-full sm:w-fit text-[16px] md:text-[14px] justify-center items-center bg-(--primary-color) font-[Inter] text-[14px] uppercase py-5 sm:py-3 px-6 rounded-sm"
+              className="button flex gap-3 w-full sm:w-fit text-[16px] md:text-[14px] justify-center items-center bg-(--primary-color) font-[Inter] text-[14px] uppercase py-4 sm:py-3 px-6 rounded-sm"
             >
-              <img src={playIcon} className="h-[14px] w-[11px]" alt="" />
+              <img
+                src={playIcon}
+                className="h-[14px] w-[11px]"
+                alt="Play Icon"
+              />
               Watch Now
             </Link>
             <Link
               to={`/anime/${slides[selectedIndex].id}`} // Dynamic link to anime details page
-              className="button flex gap-3 w-full sm:w-fit text-[16px] md:text-[14px] justify-center items-center bg-white/5 hover:bg-white/10 transition-colors duration-300 border border-white/20 font-[Inter] text-[14px] uppercase py-5 sm:py-3 px-6 rounded-sm"
+              className="button flex gap-3 w-full sm:w-fit text-[16px] md:text-[14px] justify-center items-center bg-white/5 hover:bg-white/10 transition-colors duration-300 border border-white/20 font-[Inter] text-[14px] uppercase py-4 sm:py-3 px-6 rounded-sm"
             >
-              <img src={detailsIcon} className="h-[14px] w-[11px]" alt="" />
+              <img
+                src={detailsIcon}
+                className="h-[14px] w-[11px]"
+                alt="Details Icon"
+              />
               Details
             </Link>
           </div>

@@ -30,7 +30,7 @@ function CTA() {
                 Unlock the Full{" "}
                 <span className="text-(--brand-color)">Cinemi</span> Experience
               </h1>
-              <p className="text-[16px] font-[Inter] text-[#a1a1a1]">
+              <p className="text-[16px] hidden md:block font-[Inter] text-[#a1a1a1]">
                 Create a free account to personalize your anime journey and keep
                 track of everything you watch.
               </p>

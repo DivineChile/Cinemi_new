@@ -7,6 +7,7 @@ import Library from "./pages/Library";
 import Profile from "./pages/Profile";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
+import AnimeDetail from "./pages/AnimeDetail";
 
 const router = createBrowserRouter([
   {
@@ -28,6 +29,10 @@ const router = createBrowserRouter([
       {
         path: "profile",
         element: <Profile />,
+      },
+      {
+        path: "anime",
+        element: <AnimeDetail />,
       },
     ],
   },
