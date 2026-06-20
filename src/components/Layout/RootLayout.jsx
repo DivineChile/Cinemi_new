@@ -12,6 +12,8 @@ import {
   Settings,
   Home,
 } from "lucide-react";
+import { BackToTop } from "../ui/BackToTop";
+import { ScrollToTop } from "../ui/ScrollToTop";
 
 function RootLayout() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -98,6 +100,7 @@ function RootLayout() {
   const currentYear = new Date().getFullYear();
   return (
     <div className="wrapper">
+      <ScrollToTop />
       <header
         className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${isScrolled ? "bg-[#0a0a0a] shadow-md border-b border-transparent" : "bg-transparent"}`}
       >
@@ -217,6 +220,7 @@ function RootLayout() {
           })}
         </div>
       </div>
+      <BackToTop />
     </div>
   );
 }

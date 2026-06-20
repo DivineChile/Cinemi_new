@@ -1,5 +1,6 @@
 import { Play, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
+import { SmoothImage } from "../SmoothImage";
 
 function ContentCard({ to, id, poster, title, score, genres }) {
   return (
@@ -9,10 +10,10 @@ function ContentCard({ to, id, poster, title, score, genres }) {
     >
       {/* Poster image box frame */}
       <div className="poster-container w-full h-[216px] md:h-[345px] relative overflow-hidden rounded-xl bg-gray-900">
-        <img
+        <SmoothImage
           src={poster}
           alt={title}
-          className="poster h-full w-full object-cover rounded-xl transform transition-transform duration-500 group-hover:scale-105"
+          className="transform transition-transform duration-500 group-hover:scale-105"
         />
 
         {/* 2. Turned 'poster-overlay' into a centered backdrop with transition utilities */}

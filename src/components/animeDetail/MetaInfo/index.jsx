@@ -3,7 +3,6 @@ import {
   Tv,
   Info,
   PlaySquare,
-  Film,
   Sparkles,
   Play,
 } from "lucide-react";
@@ -84,7 +83,7 @@ function MetaInfo({ loading, error, rawApiData }) {
   if (error || !rawApiData) return null;
 
   return (
-    <section className="bg-(--neutral-color) py-12 text-white border-t border-white/5 md:border-none">
+    <section className="bg-(--neutral-color) py-12 text-white ">
       {/* Universal Cinemi Page Width Constraints */}
       <div className="max-w-7xl mx-auto px-4">
         {/* Responsive Parent Two-Column Split Grid */}
