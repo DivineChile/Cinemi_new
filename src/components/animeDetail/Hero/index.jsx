@@ -13,7 +13,7 @@ function Hero({ loading, error, anime }) {
   // 4. Integrated Skeleton Loader Overlay state
   if (loading) {
     return (
-      <div className="relative w-full h-[85vh] md:h-[100vh] bg-[#0a0a0a] flex items-center justify-center overflow-hidden">
+      <div className="relative w-full h-[90vh] md:h-[100vh] bg-[#0a0a0a] flex items-center justify-center overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 w-full h-full flex flex-col items-center justify-center gap-6 animate-pulse text-center">
           <div className="h-6 bg-white/5 rounded-full w-24" />
           <div className="h-14 bg-white/10 rounded-xl w-[70%] max-w-2xl" />
@@ -31,7 +31,7 @@ function Hero({ loading, error, anime }) {
   // 5. Clean Error state display bound
   if (error || !anime) {
     return (
-      <div className="w-full h-[85vh] md:h-[100vh] bg-[#0a0a0a] flex flex-col items-center justify-center gap-4 text-center px-4">
+      <div className="w-full h-[90vh] md:h-[100vh] bg-[#0a0a0a] flex flex-col items-center justify-center gap-4 text-center px-4">
         <p className="text-(--brand-color) font-[Inter] text-lg font-semibold">
           {error || "Anime not found"}
         </p>
