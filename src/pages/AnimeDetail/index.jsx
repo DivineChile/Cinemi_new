@@ -81,7 +81,7 @@ function AnimeDetail() {
       {/* 🌟 SECTION 2: COMMUNITY RECOMMENDATIONS ("If you liked X, you'll like Y") */}
       {recommendationsRaw.length > 0 && (
         <CarouselRow
-          title="Recommended For You"
+          title="Recommendedations"
           seeAllLink="#"
           overrideData={recommendationsRaw.map((item) => ({
             id: item.id,
