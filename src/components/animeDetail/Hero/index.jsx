@@ -46,7 +46,7 @@ function Hero({ loading, error, anime }) {
   }
 
   return (
-    <div className="relative w-full h-[85vh] md:h-[100vh] bg-[#0a0a0a] overflow-hidden flex items-center justify-center">
+    <div className="relative w-full h-[90vh] md:h-[100vh] bg-[#0a0a0a] overflow-hidden flex items-center justify-center">
       <div className="absolute top-15 left-4 md:left-4 z-40 max-w-7xl mx-auto w-full pointer-events-none">
         <Link
           to="/"
