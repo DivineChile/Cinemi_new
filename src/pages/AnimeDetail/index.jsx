@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Hero from "../../components/animeDetail/Hero";
 import MetaInfo from "../../components/animeDetail/MetaInfo";
 import { AnimeEpisodes } from "../../components/animeDetail/AnimeEpisodes";
+import { CarouselRow } from "../../components/ui/CarouselRow";
 
 function AnimeDetail() {
   const { animeId } = useParams();
@@ -35,11 +36,61 @@ function AnimeDetail() {
 
     if (animeId) getAnimeData();
   }, [animeId]);
+
+  const relatedMediaRaw = animeData?.relations?.edges.map((item) => item) || [];
+  const recommendationsRaw =
+    animeData?.recommendations?.nodes.map(
+      (item) => item?.mediaRecommendation,
+    ) || [];
+
   return (
-    <div className="bg-(--neutral-color) min-h-screen">
+    <div className="bg-(--neutral-color) min-h-screen pb-16">
       <Hero loading={loading} error={error} anime={animeData} />
       <MetaInfo loading={loading} error={error} rawApiData={animeData} />
       <AnimeEpisodes />
+      {relatedMediaRaw.length > 0 && (
+        <CarouselRow
+          title="Related Media"
+          seeAllLink="#"
+          overrideData={relatedMediaRaw
+            .filter((item) => item?.relationType !== "OTHER")
+            .map((item) => ({
+              id: item?.node?.id,
+              to: `/anime/${item?.node.id}`,
+              poster:
+                item?.node?.coverImage?.extraLarge ||
+                item?.node?.coverImage?.large,
+              title:
+                item?.node?.title?.english ||
+                item?.node?.title?.romaji ||
+                item?.node?.title?.native,
+              score: item?.node?.meanScore
+                ? (item?.node?.meanScore / 10).toFixed(1)
+                : "0.0",
+              // Display the specific relationship format as the card subtitle (e.g., SEQUEL · TV)
+              genres: `${item?.relationType || "RELATED"} • ${item?.node?.format || "ANIME"}`,
+            }))}
+        />
+      )}
+
+      {/* 🌟 SECTION 2: COMMUNITY RECOMMENDATIONS ("If you liked X, you'll like Y") */}
+      {recommendationsRaw.length > 0 && (
+        <CarouselRow
+          title="Recommended For You"
+          seeAllLink="#"
+          overrideData={recommendationsRaw.map((item) => ({
+            id: item.id,
+            to: `/anime/${item.id}`,
+            poster: item.coverImage?.extraLarge || item.coverImage?.large,
+            title:
+              item.title?.english || item.title?.romaji || item.title?.native,
+            score: item.averageScore
+              ? (item.averageScore / 10).toFixed(1)
+              : "0.0",
+            genres: item.genres ? item.genres.slice(0, 2).join(", ") : "Anime",
+          }))}
+        />
+      )}
     </div>
   );
 }

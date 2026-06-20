@@ -7,7 +7,7 @@ import ContentCard from "../ContentCard";
 // Replace this with your actual Cloudflare Worker URL
 const PROXY_API_URL = import.meta.env.VITE_PROXY_API_URL;
 
-export const CarouselRow = ({ title, endpoint, seeAllLink = "/" }) => {
+export const CarouselRow = ({ title, endpoint, seeAllLink = "/", overrideData = null }) => {
   const [animeList, setAnimeList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -49,6 +49,13 @@ export const CarouselRow = ({ title, endpoint, seeAllLink = "/" }) => {
   }, [emblaApi, onSelect, animeList]);
 
   useEffect(() => {
+     if (overrideData) {
+       setAnimeList(overrideData);
+       setLoading(false);
+       setError(null);
+       return; // Skip endpoint fetching entirely if data is already passed as a prop!
+     }
+
     const fetchRowData = async () => {
       try {
         setLoading(true);
@@ -93,7 +100,7 @@ export const CarouselRow = ({ title, endpoint, seeAllLink = "/" }) => {
     };
 
     fetchRowData();
-  }, [endpoint, title]); // Re-fetch smoothly if endpoint ever changes dynamically
+  }, [endpoint, title, overrideData]); // Re-fetch smoothly if endpoint ever changes dynamically
 
   return (
     <div className="carousel-row py-7 md:py-5 lg:py-7 xl:py-10 bg-(--neutral-color) w-full overflow-hidden">
