@@ -53,7 +53,12 @@ function AnimeDetail() {
           title="Related Media"
           seeAllLink="#"
           overrideData={relatedMediaRaw
-            .filter((item) => item?.relationType !== "OTHER")
+            .filter(
+              (item) =>
+                item?.relationType !== "OTHER" &&
+                item?.relationType !== "SOURCE" &&
+                item?.relationType !== "ALTERNATIVE",
+            )
             .map((item) => ({
               id: item?.node?.id,
               to: `/anime/${item?.node.id}`,
