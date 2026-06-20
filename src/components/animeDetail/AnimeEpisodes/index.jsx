@@ -120,7 +120,7 @@ export const AnimeEpisodes = () => {
   }
 
   return (
-    <section className="bg-(--neutral-color) pb-20 text-white">
+    <section className="bg-(--neutral-color) pb-5 text-white">
       <div className="max-w-7xl mx-auto px-4">
         {/* SECTION NAVIGATION CONTROLS BAR */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/5 pb-4 mb-6">
