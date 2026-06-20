@@ -107,7 +107,7 @@ export const CarouselRow = ({ title, endpoint, seeAllLink = "/", overrideData = 
       {/* Dynamic Header Block Layer */}
       <div className="max-w-7xl mx-auto px-4 mb-4">
         <div className="header flex justify-between items-center">
-          <h2 className="text-[24px] font-bold text-white">{title}</h2>
+          <h2 className="text-[20px] md:text-[24px] font-bold text-white">{title}</h2>
 
           {/* Action Group: Holds your original 'See All' Link and the new arrow controls */}
           <div className="flex items-center gap-4">
