@@ -77,9 +77,54 @@ function Hero() {
   // Loading skeleton state wrapper
   if (loading) {
     return (
-      <div className="hero h-[100vh] w-full bg-[#0a0a0a] flex items-center justify-center">
-        <div className="text-white text-xl font-[Inter] animate-pulse">
-          Loading Spotlight Items...
+      <div className="hero-skeleton w-full h-[100vh] bg-[#0a0a0a] relative overflow-hidden flex items-center">
+        {/* Mimics the global layout alignment wrapper box bounds */}
+        <div className="max-w-7xl mx-auto w-full px-4 relative z-10">
+          {/* Core Content Box matching exact width percentages and gaps */}
+          <div className="content w-full flex flex-col gap-5 md:w-[70%] lg:w-[60%] animate-pulse">
+            {/* 1. Badge Wrapper Tag Slot */}
+            <div className="h-6 bg-white/5 border border-white/10 rounded-xl w-28" />
+
+            {/* 2. Hero Header Title Rows (Matches text-size layouts with a multi-row blocks) */}
+            <div className="flex flex-col gap-3">
+              <div className="h-10 md:h-14 xl:h-[70px] bg-white/10 rounded-md w-[90%]" />
+              <div className="h-10 md:h-14 xl:h-[70px] bg-white/10 rounded-md w-[50%]" />
+            </div>
+
+            {/* 3. Metadata Inline Layout Line */}
+            <div className="metadata flex gap-5 items-center mt-1">
+              {/* Rating Block */}
+              <div className="h-5 bg-white/5 rounded w-12" />
+              <div className="circle h-[4px] w-[4px] bg-white/20 rounded-full" />
+
+              {/* Year Block */}
+              <div className="h-5 bg-white/5 rounded w-10" />
+              <div className="circle h-[4px] w-[4px] bg-white/20 rounded-full" />
+
+              {/* Episodes Block */}
+              <div className="h-5 bg-white/5 rounded w-14" />
+
+              {/* Genre Block (Desktop Adaptive Visibility Matcher) */}
+              <div className="hidden md:block circle h-[4px] w-[4px] bg-white/20 rounded-full" />
+              <div className="hidden md:block h-7 bg-white/5 border border-white/10 rounded-sm w-20" />
+            </div>
+
+            {/* 4. Paragraph Blocks Summary Lines */}
+            <div className="flex flex-col gap-2.5 mt-2">
+              <div className="h-4 bg-white/5 rounded w-full" />
+              <div className="h-4 bg-white/5 rounded w-[95%]" />
+              <div className="h-4 bg-white/5 rounded w-[60%]" />
+            </div>
+
+            {/* 5. Responsive Button Layout Deck */}
+            <div className="buttons flex flex-col sm:flex-row gap-4 items-center mt-3">
+              {/* Watch Now Callout Element */}
+              <div className="h-[52px] sm:h-[46px] bg-white/10 rounded-sm w-full sm:w-36" />
+
+              {/* Details Informative Module Element */}
+              <div className="h-[52px] sm:h-[46px] bg-white/5 border border-white/10 rounded-sm w-full sm:w-32" />
+            </div>
+          </div>
         </div>
       </div>
     );

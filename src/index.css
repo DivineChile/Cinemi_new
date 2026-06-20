@@ -18,3 +18,24 @@ body {
   background: var(--neutral-color);
   color: #fff;
 }
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse-slow {
+  0%,
+  100% {
+    transform: scale(1.03);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.07);
+    opacity: 0.42;
+  }
+}
