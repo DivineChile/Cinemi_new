@@ -245,7 +245,7 @@ function Hero() {
         </div>
 
         {/* 5. Custom Dynamic Slide Indicator Dots */}
-        <div className="absolute bottom-10 right-4 z-10 flex gap-2 pointer-events-auto">
+        <div className="absolute bottom-10 hidden md:flex right-4 z-10 gap-2 pointer-events-auto">
           {scrollSnaps.map((_, index) => (
             <button
               key={index}

@@ -4,6 +4,9 @@ import { WatchHeader } from "../../components/Stream/WatchHeader";
 import { VideoCanvas } from "../../components/Stream/VideoCanvas";
 import { ActiveEpisodeMeta } from "../../components/Stream/ActiveEpisodeMeta";
 import { DesktopPlaylistSidebar } from "../../components/Stream/DesktopPlaylistSidebar";
+import { MobilePlaylistDrawer } from "../../components/Stream/MobilePlaylistDrawer";
+import { ChevronUp } from "lucide-react";
+import { CarouselRow } from "../../components/ui/CarouselRow";
 
 function Stream() {
   const PROXY_API_URL = import.meta.env.VITE_PROXY_API_URL;
@@ -23,6 +26,7 @@ function Stream() {
   const [activeAudio, setActiveAudio] = useState(category || "sub");
   const [activeProvider, setActiveProvider] = useState(provider || "");
   const [activeChunkIndex, setActiveChunkIndex] = useState(0);
+  const [recommendations, setRecommendations] = useState([]);
 
   // Cinematic and Layout Interaction States
   const [isDimmed, setIsDimmed] = useState(false);
@@ -84,6 +88,24 @@ function Stream() {
     if (id) initializeWatchView();
   }, [id, provider, category, slug, navigate]);
 
+  useEffect(() => {
+    const fetchBackupRecommendations = async () => {
+      try {
+        const res = await fetch(`${PROXY_API_URL}/info/${id}`);
+        if (!res.ok) return;
+        const infoData = await res.json();
+        const recommendationsRaw =
+          infoData?.recommendations?.nodes.map(
+            (item) => item?.mediaRecommendation,
+          ) || [];
+        setRecommendations(recommendationsRaw || []);
+      } catch (err) {
+        console.error("Recommendations lookup failed:", err);
+      }
+    };
+    if (id) fetchBackupRecommendations();
+  }, [id]);
+
   // 🌟 2. NEW LOGIC SWITCH BOARD SYSTEM: Triggers live episode switches when URL changes
   useEffect(() => {
     if (!episodeData || !provider || !category || !slug) return;
@@ -129,33 +151,34 @@ function Stream() {
     fetchVideoStream();
   }, [provider, id, category, slug]);
 
-  // Synchronize Chunk pagination index updates upon stream switches
-  useEffect(() => {
-    setActiveChunkIndex(0);
-  }, [activeAudio, activeProvider]);
-
-  // Memorize and slice episode sets to maximize performance speeds
-  const { totalEpisodeList, episodeChunks } = useMemo(() => {
-    const pData = episodeData?.providers?.[activeProvider || provider];
-    const rawList = pData?.episodes?.[activeAudio || category];
-    const verifiedList = Array.isArray(rawList) ? rawList : [];
-
+  // Segments the active provider episode array list into blocks of 100 items each
+  const { episodeChunks, currentChunkIndexFromUrl } = useMemo(() => {
     const chunks = [];
-    for (let i = 0; i < verifiedList.length; i += EPISODES_PER_PAGE) {
-      chunks.push(verifiedList.slice(i, i + EPISODES_PER_PAGE));
+    for (let i = 0; i < activeEpisodeList.length; i += EPISODES_PER_PAGE) {
+      chunks.push(activeEpisodeList.slice(i, i + EPISODES_PER_PAGE));
     }
-    return { totalEpisodeList: verifiedList, episodeChunks: chunks };
-  }, [episodeData, activeProvider, provider, activeAudio, category]);
 
-  const paginatedEpisodeList = episodeChunks[activeChunkIndex] || [];
+    // Auto-discover which chunk index the user's active url episode belongs to
+    const urlEpNum = currentActiveEpisodeObj?.number || 1;
+    const calculatedChunkIdx = Math.floor((urlEpNum - 1) / EPISODES_PER_PAGE);
+    const validChunkIdx =
+      calculatedChunkIdx >= 0 && calculatedChunkIdx < chunks.length
+        ? calculatedChunkIdx
+        : 0;
+
+    return { episodeChunks: chunks, currentChunkIndexFromUrl: validChunkIdx };
+  }, [activeEpisodeList, currentActiveEpisodeObj]);
+
+  // Sync active chunk selection view frame whenever a new episode mounts
+  useEffect(() => {
+    setActiveChunkIndex(currentChunkIndexFromUrl);
+  }, [currentChunkIndexFromUrl]);
 
   // Extract primary direct source streaming url (M3U8 / HLS player file or secure Iframe link proxy)
   const activeVideoUrl =
     streamData?.headers?.referer || streamData?.streams?.[0]?.url || "";
 
   const activeReferer = streamData?.streams?.[0]?.referer || "";
-
-  console.log(activeVideoUrl);
 
   if (loadingLayout) {
     return (
@@ -182,19 +205,14 @@ function Stream() {
   }
 
   return (
-    <div className="bg-(--neutral-color) min-h-screen relative pb-16 overflow-hidden">
-      {/* 1. Global Navigation & Cinematic Control Header (Stays full-width) */}
+    <div className="bg-(--neutral-color) min-h-screen relative pb-28 overflow-hidden">
+      {/* Theater Lights Dim Switch Header */}
       <WatchHeader id={id} isDimmed={isDimmed} setIsDimmed={setIsDimmed} />
 
-      {/* 🌟 2. RESPONSIVE GRID LAYOUT SYSTEM CONTAINER */}
-      {/* 
-        On mobile: Acts as a normal single-column block layout with zero outer padding.
-        On desktops (lg:): Morphs into your premium asymmetrical 4-column split grid track.
-      */}
+      {/* Grid Layout Track Container */}
       <div className="w-full max-w-7xl mx-auto px-0 md:px-4 lg:grid lg:grid-cols-4 lg:gap-6 items-start mt-2">
-        {/* LEFT COLUMN RAIL: Occupies 3 columns on big screens, expands to full width on mobile */}
-        <div className="lg:col-span-3 flex flex-col gap-5 w-full">
-          {/* Main Media Player Viewport Screen Canvas */}
+        <div className="lg:col-span-3 flex flex-col gap-6 w-full">
+          {/* Main Video element screen viewport block */}
           <VideoCanvas
             videoUrl={streamData?.error ? "" : activeVideoUrl}
             loadingVideo={loadingVideo}
@@ -202,29 +220,101 @@ function Stream() {
             referer={activeReferer}
           />
 
-          {/* Typographic Episode Title & Server Node Summaries */}
-          {/* Added internal mobile padding helper wrapper bounds so text doesn't touch the screen edge on mobile */}
-          <div className="px-4 md:px-0">
+          {/* 🌟 FIX: Active Episode Meta now automatically hides when 'isDimmed' is active */}
+          <div
+            className={`px-4 md:px-0 transition-opacity duration-500 ${isDimmed ? "opacity-0 pointer-events-none" : "opacity-100"}`}
+          >
             <ActiveEpisodeMeta
               category={category}
               provider={provider}
               slug={slug}
               activeEpisodeObj={currentActiveEpisodeObj}
+              // downloadUrl={downloadLink}
             />
           </div>
         </div>
 
-        {/* RIGHT COLUMN RAIL: Occupies exactly 1 column on desktop screens */}
-        {/* The component layout file itself contains 'hidden lg:flex' classes, so it automatically ignores mobile streams */}
-        <DesktopPlaylistSidebar
-          episodeData={episodeData}
-          totalEpisodeList={activeEpisodeList}
-          id={id}
-          slug={slug}
-          activeProvider={provider}
-          activeAudio={category}
-        />
+        {/* 🌟 FIX: Desktop sidebar automatically hides when 'isDimmed' is active */}
+        <div
+          className={`transition-opacity duration-500 ${isDimmed ? "opacity-0 pointer-events-none" : "opacity-100"}`}
+        >
+          <DesktopPlaylistSidebar
+            episodeData={episodeData}
+            totalEpisodeList={activeEpisodeList}
+            episodeChunks={episodeChunks}
+            activeChunkIndex={activeChunkIndex}
+            setActiveChunkIndex={setActiveChunkIndex}
+            id={id}
+            slug={slug}
+            activeProvider={provider}
+            activeAudio={category}
+          />
+        </div>
       </div>
+
+      {/* 🌟 ENHANCEMENT: "UP NEXT" DYNAMIC DISCOVERY RECOMMENDATIONS LANE SHELF */}
+      {/* Sits right at the bottom base line inside the layout limits to add depth to the page view */}
+      {!isDimmed && recommendations.length > 0 && (
+        <div className="mt-10 pb-10 mb:pb-1 opacity-90 border-t border-white/5 pt-4">
+          <CarouselRow
+            title="Watch Worthy"
+            seeAllLink="#"
+            overrideData={recommendations.slice(0, 10).map((item) => ({
+              id: item.id,
+              to: `/anime/${item.id}`,
+              poster: item.coverImage?.extraLarge || item.coverImage?.large,
+              title:
+                item.title?.english || item.title?.romaji || item.title?.native,
+              score: item.averageScore
+                ? (item.averageScore / 10).toFixed(1)
+                : "0.0",
+              genres: item.genres
+                ? item.genres.slice(0, 2).join(", ")
+                : "Anime",
+            }))}
+          />
+        </div>
+      )}
+
+      {/* Sticky Bottom Control Tray (Hidden on Desktops and when Dimmed) */}
+      {!isDimmed && (
+        <div
+          onClick={() => setIsMobileDrawerOpen(true)}
+          className="lg:hidden cursor-pointer fixed bottom-[82px] md:bottom-[77px] left-0 right-0 z-40 bg-[#0c0c0c]/95 backdrop-blur-md border-t border-white/5 px-4 py-3 flex items-center justify-between shadow-xl"
+        >
+          <div className="flex flex-col min-w-0">
+            <span className="text-[11px] text-white/40 uppercase font-bold tracking-wider font-mono">
+              Current Track
+            </span>
+            <span className="text-[13px] font-bold text-white truncate max-w-[170px]">
+              {currentActiveEpisodeObj?.title ||
+                `Episode ${slug?.split("-").pop()}`}
+            </span>
+          </div>
+          <span
+            type="button"
+            className="bg-white/5 border border-white/10 text-white/90 font-bold text-[12px] uppercase tracking-wider py-2 px-4 rounded-lg flex items-center gap-1.5"
+          >
+            Episodes ({activeEpisodeList.length})
+            <ChevronUp />
+          </span>
+        </div>
+      )}
+
+      {/* Sliding Mobile App-style Episode Drawer Sheet Container */}
+      <MobilePlaylistDrawer
+        isOpen={isMobileDrawerOpen}
+        setIsOpen={setIsMobileDrawerOpen}
+        episodeData={episodeData}
+        totalEpisodeList={activeEpisodeList}
+        episodeChunks={episodeChunks}
+        activeChunkIndex={activeChunkIndex}
+        setActiveChunkIndex={setActiveChunkIndex}
+        id={id}
+        slug={slug}
+        activeProvider={provider}
+        activeAudio={category}
+      />
     </div>
   );
 }

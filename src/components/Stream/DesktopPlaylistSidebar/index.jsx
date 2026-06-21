@@ -6,11 +6,15 @@ import {
   Image as ImageIcon,
   Play,
   AlertCircle,
+  SlidersHorizontal,
 } from "lucide-react";
 
 export const DesktopPlaylistSidebar = ({
   episodeData,
   totalEpisodeList,
+  episodeChunks,
+  activeChunkIndex,
+  setActiveChunkIndex,
   id,
   slug,
   activeProvider,
@@ -59,6 +63,9 @@ export const DesktopPlaylistSidebar = ({
   };
 
   const workingProviders = ["bonk", "bee", "pewe"];
+
+  // Isolate strictly the 100 cards for the currently selected range chunk safely
+  const paginatedEpisodeList = episodeChunks[activeChunkIndex] || [];
   return (
     /* 
       Exclusively visible on laptop/desktop monitor viewports (lg:flex).
@@ -110,37 +117,48 @@ export const DesktopPlaylistSidebar = ({
             </select>
           </div>
         </div>
+
+        {episodeChunks.length > 1 && (
+          <div className="flex flex-col gap-1.5 mt-2 border-t border-white/5 pt-3">
+            <span className="text-[10px] text-[#a1a1a1] font-bold uppercase tracking-wider flex items-center gap-1">
+              <SlidersHorizontal size={11} /> Range Select:
+            </span>
+            <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto pr-1">
+              {episodeChunks.map((_, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => setActiveChunkIndex(index)}
+                  className={`px-2 py-1 rounded text-[11px] font-bold transition-all ${index === activeChunkIndex ? "bg-white text-black" : "bg-white/5 border border-white/5 text-white/60 hover:text-white hover:bg-white/10"}`}
+                >
+                  {index * 100 + 1}-
+                  {Math.min((index + 1) * 100, totalEpisodeList.length)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* SCROLLING EPISODES PLAYLIST SLOT TRACK */}
+      {/* RENDER CHUNK LIST GRID ONLY */}
       <div className="flex flex-col gap-2.5 overflow-y-auto pr-1">
-        {totalEpisodeList.length === 0 ? (
-          <div className="text-center text-white/30 text-[13px] py-12 flex flex-col items-center gap-2">
-            <AlertCircle size={20} className="opacity-50" />
-            <p>No episodes matched this source settings block.</p>
+        {paginatedEpisodeList.length === 0 ? (
+          <div className="text-center text-white/30 text-[13px] py-12">
+            <p>No episodes matched this source channel.</p>
           </div>
         ) : (
-          totalEpisodeList.map((ep) => {
-            // Isolate individual endpoint tokens safely to check against active states
+          paginatedEpisodeList.map((ep) => {
             const epSlugToken =
               ep.id?.split("/")?.pop() || ep.number.toString();
             const isSelected = slug === epSlugToken;
 
-            const targetWatchPath = ep.id
-              ? `/${ep.id}`
-              : `/watch/${activeProvider}/${id}/${activeAudio}/${ep.number}`;
-
             return (
               <Link
                 key={ep.number || ep.id}
-                to={targetWatchPath}
-                className={`flex items-center gap-3 p-2 rounded-xl border transition-all duration-300 group ${
-                  isSelected
-                    ? "bg-(--primary-color) border-(--primary-color) text-white shadow-lg shadow-[#b11226]/10 font-bold"
-                    : "bg-black/10 border-white/0 hover:border-white/5 hover:bg-white/5 text-white/80 hover:text-white"
-                }`}
+                to={`/watch/${activeProvider}/${id}/${activeAudio}/${epSlugToken}`}
+                className={`flex items-center gap-3 p-2 rounded-xl border transition-all duration-300 group ${isSelected ? "bg-(--primary-color) border-(--primary-color) text-white font-bold" : "bg-black/10 border-white/0 hover:border-white/5 hover:bg-white/5"}`}
               >
-                {/* Micro Thumbnail Image Box frame */}
                 <div className="w-20 aspect-video rounded-md overflow-hidden relative shrink-0 bg-neutral-900 shadow-sm">
                   {ep.image ? (
                     <SmoothImage src={ep.image} alt="" />
@@ -149,26 +167,12 @@ export const DesktopPlaylistSidebar = ({
                       <ImageIcon size={14} />
                     </div>
                   )}
-                  {/* Subtle black overlay appears with play vector arrow icon on card item hover triggers */}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Play
-                      size={12}
-                      fill="currentColor"
-                      className="text-white"
-                    />
-                  </div>
                 </div>
-
-                {/* Typography Metadata description stack rows */}
                 <div className="flex flex-col min-w-0 font-[Inter] leading-tight">
                   <span className="text-[13px]">Episode {ep.number}</span>
                   {ep.title && (
                     <span
-                      className={`text-[11px] truncate max-w-[130px] mt-0.5 transition-colors ${
-                        isSelected
-                          ? "text-white/70"
-                          : "text-white/40 group-hover:text-white/60"
-                      }`}
+                      className={`text-[11px] truncate max-w-[130px] mt-0.5 ${isSelected ? "text-white/70" : "text-white/40"}`}
                     >
                       {ep.title}
                     </span>
@@ -181,4 +185,4 @@ export const DesktopPlaylistSidebar = ({
       </div>
     </div>
   );
-};;;
+};;;;

@@ -7,7 +7,7 @@ export const Player = ({
   provider,
   referer,
   triggerIframeFallback,
-  playerTier
+  playerTier,
 }) => {
   const videoRef = useRef(null);
 
@@ -94,7 +94,7 @@ export const Player = ({
         hls.destroy();
       }
     };
-  }, [mainUrl, loadingVideo, videoUrl, referer, triggerIframeFallback]);
+  }, [mainUrl]);
 
   return (
     <div className="w-full h-full relative bg-black flex items-center justify-center">

@@ -158,7 +158,9 @@ function RootLayout() {
       </main>
 
       <div className="foot">
-        <footer className="footer py-[40px] hidden md:block border border-white/5 bg-(--neutral-color)">
+        <footer
+          className={`footer py-[40px] hidden ${location.pathname.includes("watch") ? "hidden" : "block"} lg:block border border-white/5 bg-(--neutral-color)`}
+        >
           <div className="max-w-7xl mx-auto px-4">
             <div className="footer-inner flex flex-col md:flex-row gap-3 items-center justify-between">
               <div className="left-side">
@@ -195,7 +197,7 @@ function RootLayout() {
           </div>
         </footer>
 
-        <div className="bottom-mobile-nav md:hidden border border-white/5 rounded-t-2xl flex justify-between py-4 px-4 fixed z-20 bottom-0 w-full items-center bg-[#1c1b1b]">
+        <div className="bottom-mobile-nav lg:hidden border border-white/5 flex justify-between py-4 px-4 fixed z-20 bottom-0 w-full items-center bg-[#1c1b1b]">
           {mobileNavLinks.map((link, i) => {
             const isActive = location.pathname === link.to;
 

@@ -24,7 +24,7 @@ export const ActiveEpisodeMeta = ({
           <span className="bg-[#b11226]/10 border border-[#b11226]/20 text-(--brand-color) text-[11px] font-extrabold uppercase font-mono px-2.5 py-0.5 rounded-md tracking-wider select-none animate-pulse">
             Now Streaming
           </span>
-          <h2 className="text-[20px] md:text-[24px] font-black tracking-wide leading-none">
+          <h2 className="text-[20px] md:text-[24px] font-bold tracking-wide leading-none">
             {episodeTitle}
           </h2>
         </div>

@@ -126,11 +126,6 @@ export const AnimeEpisodes = () => {
       </div>
     );
   }
-
-  // const realProviders = episodeData?.providers?.filter(
-  //   (provider) => provider !== "kiwi" && provider !== "hop",
-  // );
-
   return (
     <section className="bg-(--neutral-color) pb-5 text-white">
       <div className="max-w-7xl mx-auto px-4">
