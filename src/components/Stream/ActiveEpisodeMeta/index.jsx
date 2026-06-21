@@ -1,37 +1,68 @@
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Calendar, Film } from "lucide-react";
 
-export const ActiveEpisodeMeta = ({ slug, provider, category }) => {
-  // Extract and clean up the episode number string format safely (e.g., "episode-12" -> "12")
+export const ActiveEpisodeMeta = ({
+  slug,
+  provider,
+  category,
+  activeEpisodeObj,
+}) => {
   const rawEpisodeNum = slug?.split("-")?.pop();
   const formattedEpisode = isNaN(rawEpisodeNum) ? "Active" : rawEpisodeNum;
 
+  // Extract rich parameter fields safely out of the newly matched episode metadata object mapping
+  const episodeTitle = activeEpisodeObj?.title || `Episode ${formattedEpisode}`;
+  const episodeDescription = activeEpisodeObj?.description
+    ? activeEpisodeObj.description.replace(/<[^>]*>/g, "")
+    : "No synopsis narrative is currently recorded for this individual episode track file.";
+  const airDate = activeEpisodeObj?.airDate || null;
+
   return (
-    <div className="active-episode-metadata mt-2 flex flex-col gap-2 font-[Inter]">
-      {/* Dynamic Notification Badging Row */}
-      <div className="flex items-center gap-2.5">
-        <span className="bg-[#b11226]/10 border border-[#b11226]/20 text-(--brand-color) text-[11px] font-extrabold uppercase font-mono px-2.5 py-0.5 rounded-md tracking-wider select-none animate-pulse">
-          Now Playing
-        </span>
-        <h2 className="text-[20px] md:text-[24px] font-bold text-white tracking-wide leading-none">
-          Episode {formattedEpisode}
-        </h2>
+    <div className="active-episode-metadata flex flex-col gap-4 font-[Inter] text-white">
+      {/* Top Identity Block */}
+      <div className="flex flex-col gap-1.5 border-b border-white/5 pb-4">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="bg-[#b11226]/10 border border-[#b11226]/20 text-(--brand-color) text-[11px] font-extrabold uppercase font-mono px-2.5 py-0.5 rounded-md tracking-wider select-none animate-pulse">
+            Now Streaming
+          </span>
+          <h2 className="text-[20px] md:text-[24px] font-black tracking-wide leading-none">
+            {episodeTitle}
+          </h2>
+        </div>
+
+        {/* Secondary Context Information Info line (Episode Counter + Airing Timeline details) */}
+        <div className="flex items-center gap-3 text-[13px] text-[#a1a1a1] font-medium mt-1">
+          <span className="flex items-center gap-1">
+            <Film size={13} className="text-(--brand-color)" /> Episode{" "}
+            {formattedEpisode}
+          </span>
+          {airDate && (
+            <>
+              <div className="w-1 h-1 bg-white/20 rounded-full" />
+              <span className="flex items-center gap-1">
+                <Calendar size={13} /> Released {airDate}
+              </span>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Informative Connection Channel Status Block */}
-      <div className="flex items-start gap-2 text-[14px] text-[#a1a1a1] leading-relaxed max-w-3xl font-medium mt-0.5">
-        <AlertCircle size={15} className="text-[#a1a1a1]/40 shrink-0 mt-1" />
+      {/* Episode Plot Summary Synopsis Block */}
+      <div className="flex flex-col gap-2">
+        <p className="text-[#a1a1a1] font-[Inter] text-[15px] md:text-[16px] leading-relaxed whitespace-pre-line max-w-4xl">
+          {episodeDescription}
+        </p>
+      </div>
+
+      {/* Channel Server Connection Log Summary */}
+      <div className="flex items-start gap-2 text-[13px] text-white/40 leading-normal max-w-3xl mt-2 bg-white/5 border border-white/5 p-3 rounded-xl">
+        <AlertCircle size={14} className="shrink-0 mt-0.5" />
         <p>
-          Connected to server node{" "}
-          <span className="text-white uppercase font-bold font-mono bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-[12px]">
-            {provider || "Default"}
+          You are watching via node server{" "}
+          <span className="text-white/70 font-bold uppercase font-mono">
+            {provider}
           </span>{" "}
-          running audio track channel{" "}
-          <span className="text-white uppercase font-bold font-mono bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-[12px]">
-            {category || "SUB"}
-          </span>
-          . If you experience unexpected buffering loops, dropouts, or audio
-          mismatches, utilize the configuration menus to shift streaming
-          providers.
+          ({category}). If you notice video stuttering, slow loading, audio
+          delays, or black screens, switch channels using the controls.
         </p>
       </div>
     </div>

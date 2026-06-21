@@ -27,6 +27,8 @@ export const AnimeEpisodes = () => {
   const [activeChunkIndex, setActiveChunkIndex] = useState(0);
   const [isCollapsed, setIsCollapsed] = useState(window.innerWidth < 768);
 
+  const workingProviders = ["bonk", "bee", "pewe"];
+
   // Fetch episodes dataset matching your 3-Step Streaming Flow
   useEffect(() => {
     const fetchEpisodes = async () => {
@@ -43,12 +45,16 @@ export const AnimeEpisodes = () => {
 
         // Auto-select the first available provider from the API response payload object map
         const availableProviders = Object.keys(data.providers || {});
-        if (availableProviders.length > 0) {
+        const realProviders = availableProviders.filter(
+          (provider) => provider !== "kiwi" && provider !== "hop",
+        );
+
+        if (realProviders.length > 0) {
           // Default to 'kiwi' if available, otherwise grab the first one
-          if (availableProviders.includes("kiwi")) {
-            setActiveProvider("kiwi");
+          if (realProviders.includes("bee")) {
+            setActiveProvider("bee");
           } else {
-            setActiveProvider(availableProviders[0]);
+            setActiveProvider(realProviders[0]);
           }
         }
       } catch (err) {
@@ -120,6 +126,10 @@ export const AnimeEpisodes = () => {
       </div>
     );
   }
+
+  // const realProviders = episodeData?.providers?.filter(
+  //   (provider) => provider !== "kiwi" && provider !== "hop",
+  // );
 
   return (
     <section className="bg-(--neutral-color) pb-5 text-white">
@@ -205,17 +215,17 @@ export const AnimeEpisodes = () => {
                   onChange={(e) => setActiveProvider(e.target.value)}
                   className="bg-transparent w-full md:w-fit text-white font-semibold outline-none cursor-pointer pr-1"
                 >
-                  {Object.keys(episodeData.providers || {}).map(
-                    (providerKey) => (
+                  {Object.entries(episodeData?.providers).filter(([key]) => workingProviders.includes(key)).map(([key]) => {
+                    return (
                       <option
-                        key={providerKey}
-                        value={providerKey}
+                        key={key}
+                        value={key}
                         className="bg-[#0a0a0a] text-white uppercase text-[12px]"
                       >
-                        Source: {providerKey}
+                        Source: {key}
                       </option>
-                    ),
-                  )}
+                    );
+                  })}
                 </select>
               </div>
 

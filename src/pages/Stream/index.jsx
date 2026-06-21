@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { WatchHeader } from "../../components/Stream/WatchHeader";
-import { Link } from "lucide-react";
 import { VideoCanvas } from "../../components/Stream/VideoCanvas";
 import { ActiveEpisodeMeta } from "../../components/Stream/ActiveEpisodeMeta";
+import { DesktopPlaylistSidebar } from "../../components/Stream/DesktopPlaylistSidebar";
 
 function Stream() {
   const PROXY_API_URL = import.meta.env.VITE_PROXY_API_URL;
@@ -28,6 +28,9 @@ function Stream() {
   const [isDimmed, setIsDimmed] = useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
+  const [activeEpisodeList, setActiveEpisodeList] = useState([]);
+  const [currentActiveEpisodeObj, setCurrentActiveEpisodeObj] = useState(null);
+
   // 🌟 STEP 1 & 2 ROUTING RESOLVER LOGIC
   useEffect(() => {
     const initializeWatchView = async () => {
@@ -43,12 +46,16 @@ function Stream() {
 
         // Detect available providers
         const availableProviders = Object.keys(epPayload.providers || {});
-        if (availableProviders.length === 0)
+        const realProviders = availableProviders.filter(
+          (provider) => provider !== "kiwi" && provider !== "hop",
+        );
+
+        if (realProviders.length === 0)
           setError("No active streaming sources found.");
 
-        const fallbackProvider = availableProviders.includes("pewe")
-          ? "pewe"
-          : availableProviders[0];
+        const fallbackProvider = realProviders.includes("bee")
+          ? "bee"
+          : realProviders[0];
 
         // SCENARIO A: Routed from Home Page "Watch Now" (Missing trailing layout parameters)
         if (!provider || !category || !slug) {
@@ -77,6 +84,23 @@ function Stream() {
     if (id) initializeWatchView();
   }, [id, provider, category, slug, navigate]);
 
+  // 🌟 2. NEW LOGIC SWITCH BOARD SYSTEM: Triggers live episode switches when URL changes
+  useEffect(() => {
+    if (!episodeData || !provider || !category || !slug) return;
+
+    // A. Isolate the target provider's array list dynamically
+    const targetProviderDeck =
+      episodeData?.providers?.[provider]?.episodes?.[category] || [];
+    setActiveEpisodeList(targetProviderDeck);
+
+    // B. Re-map and discover the active card object matching the new slug identifier
+    const activeObj = targetProviderDeck.find((ep) => {
+      const epSlugToken = ep.id?.split("/").pop() || ep.number.toString();
+      return slug === epSlugToken;
+    });
+    setCurrentActiveEpisodeObj(activeObj || null);
+  }, [episodeData, provider, category, slug]); // Fires immediately whenever a dropdown selection updates the parameters
+
   // 🌟 STEP 3: OUTBOUND VIDEO LINK RETRIEVAL
   useEffect(() => {
     // Only query video links if deep parameters are fully mapped and ready
@@ -92,11 +116,11 @@ function Stream() {
         if (!res.ok)
           setError("Stream player failed to query asset source link.");
         const streamPayload = await res.json();
-        console.log(streamPayload);
         setStreamData(streamPayload);
       } catch (err) {
         console.error(err);
         setError(err);
+        setStreamData({ error: true });
       } finally {
         setLoadingVideo(false);
       }
@@ -129,6 +153,8 @@ function Stream() {
   const activeVideoUrl =
     streamData?.headers?.referer || streamData?.streams?.[0]?.url || "";
 
+  const activeReferer = streamData?.streams?.[0]?.referer || "";
+
   console.log(activeVideoUrl);
 
   if (loadingLayout) {
@@ -143,11 +169,11 @@ function Stream() {
     return (
       <div className="w-full h-screen bg-[#0a0a0a] flex flex-col items-center justify-center gap-4 text-center px-4">
         <p className="text-(--brand-color) font-[Inter] text-md font-semibold">
-          ⚠️ {error}
+          Error Loading Streams
         </p>
         <Link
-          to={`/info/${id}`}
-          className="text-white bg-white/5 border border-white/10 px-5 py-2 rounded-lg text-[13px] font-semibold font-[Inter]"
+          to={`/anime/${id}`}
+          className="text-white cursor-pointer bg-white/5 border border-white/10 px-5 py-2 rounded-lg text-[13px] font-semibold font-[Inter]"
         >
           Return to Details
         </Link>
@@ -156,14 +182,49 @@ function Stream() {
   }
 
   return (
-    <div className="bg-(--neutral-color) min-h-screen">
+    <div className="bg-(--neutral-color) min-h-screen relative pb-16 overflow-hidden">
+      {/* 1. Global Navigation & Cinematic Control Header (Stays full-width) */}
       <WatchHeader id={id} isDimmed={isDimmed} setIsDimmed={setIsDimmed} />
-      <VideoCanvas
-        videoUrl={activeVideoUrl}
-        loadingVideo={loadingVideo}
-        provider={provider}
-      />
-      <ActiveEpisodeMeta category={category} provider={provider} slug={slug}/>
+
+      {/* 🌟 2. RESPONSIVE GRID LAYOUT SYSTEM CONTAINER */}
+      {/* 
+        On mobile: Acts as a normal single-column block layout with zero outer padding.
+        On desktops (lg:): Morphs into your premium asymmetrical 4-column split grid track.
+      */}
+      <div className="w-full max-w-7xl mx-auto px-0 md:px-4 lg:grid lg:grid-cols-4 lg:gap-6 items-start mt-2">
+        {/* LEFT COLUMN RAIL: Occupies 3 columns on big screens, expands to full width on mobile */}
+        <div className="lg:col-span-3 flex flex-col gap-5 w-full">
+          {/* Main Media Player Viewport Screen Canvas */}
+          <VideoCanvas
+            videoUrl={streamData?.error ? "" : activeVideoUrl}
+            loadingVideo={loadingVideo}
+            provider={provider}
+            referer={activeReferer}
+          />
+
+          {/* Typographic Episode Title & Server Node Summaries */}
+          {/* Added internal mobile padding helper wrapper bounds so text doesn't touch the screen edge on mobile */}
+          <div className="px-4 md:px-0">
+            <ActiveEpisodeMeta
+              category={category}
+              provider={provider}
+              slug={slug}
+              activeEpisodeObj={currentActiveEpisodeObj}
+            />
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN RAIL: Occupies exactly 1 column on desktop screens */}
+        {/* The component layout file itself contains 'hidden lg:flex' classes, so it automatically ignores mobile streams */}
+        <DesktopPlaylistSidebar
+          episodeData={episodeData}
+          totalEpisodeList={activeEpisodeList}
+          id={id}
+          slug={slug}
+          activeProvider={provider}
+          activeAudio={category}
+        />
+      </div>
     </div>
   );
 }
