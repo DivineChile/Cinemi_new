@@ -1,5 +1,11 @@
 import { useNavigate, Link } from "react-router-dom";
-import { Tv, X, Image as ImageIcon, AlertCircle, SlidersHorizontal } from "lucide-react";
+import {
+  Tv,
+  X,
+  Image as ImageIcon,
+  AlertCircle,
+  SlidersHorizontal,
+} from "lucide-react";
 import { SmoothImage } from "../../ui/SmoothImage";
 
 export const MobilePlaylistDrawer = ({
@@ -137,7 +143,7 @@ export const MobilePlaylistDrawer = ({
 
         {episodeChunks.length > 1 && (
           <div
-            className="px-3 py-2 bg-[#101010] border-b border-white/5 flex items-center gap-3 overflow-x-auto shrink-0 scrollbar-none"
+            className="px-3 py-2 bg-[#101010] border-b border-white/5 flex items-center gap-3 overflow-x-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden shrink-0 scrollbar-none"
             onClick={(e) => e.stopPropagation()}
           >
             <span className="text-[10px] text-[#a1a1a1] font-bold uppercase tracking-wider flex items-center gap-1 shrink-0">
@@ -149,7 +155,7 @@ export const MobilePlaylistDrawer = ({
                   key={index}
                   type="button"
                   onClick={() => setActiveChunkIndex(index)}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide shrink-0 transition-all ${index === activeChunkIndex ? "bg-white text-black" : "bg-white/5 border border-white/5 text-white/60"}`}
+                  className={`px-3 py-1.5 cursor-pointer rounded-lg text-[11px] font-bold tracking-wide shrink-0 transition-all ${index === activeChunkIndex ? "bg-white text-black" : "bg-white/5 border border-white/5 text-white/60"}`}
                 >
                   {index * 100 + 1} -{" "}
                   {Math.min((index + 1) * 100, totalEpisodeList.length)}
@@ -161,7 +167,7 @@ export const MobilePlaylistDrawer = ({
 
         {/* Dynamic Playlist List Grid */}
         {/* Scrolling Episode Grid Frame (Render paginated rows only) */}
-        <div className="p-4 overflow-y-auto flex flex-col gap-2.5 bg-[#0a0a0a]">
+        <div className="p-4 overflow-y-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden flex flex-col gap-2.5 bg-[#0a0a0a]">
           {paginatedEpisodeList.length === 0 ? (
             <div className="text-center text-white/30 text-[13px] py-12 flex flex-col items-center gap-2">
               <AlertCircle size={20} className="opacity-50" />

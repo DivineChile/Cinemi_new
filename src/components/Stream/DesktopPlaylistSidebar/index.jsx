@@ -123,13 +123,13 @@ export const DesktopPlaylistSidebar = ({
             <span className="text-[10px] text-[#a1a1a1] font-bold uppercase tracking-wider flex items-center gap-1">
               <SlidersHorizontal size={11} /> Range Select:
             </span>
-            <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto pr-1">
+            <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pr-1">
               {episodeChunks.map((_, index) => (
                 <button
                   key={index}
                   type="button"
                   onClick={() => setActiveChunkIndex(index)}
-                  className={`px-2 py-1 rounded text-[11px] font-bold transition-all ${index === activeChunkIndex ? "bg-white text-black" : "bg-white/5 border border-white/5 text-white/60 hover:text-white hover:bg-white/10"}`}
+                  className={`px-2 py-1 cursor-pointer rounded text-[11px] font-bold transition-all ${index === activeChunkIndex ? "bg-white text-black" : "bg-white/5 border border-white/5 text-white/60 hover:text-white hover:bg-white/10"}`}
                 >
                   {index * 100 + 1}-
                   {Math.min((index + 1) * 100, totalEpisodeList.length)}
@@ -142,7 +142,7 @@ export const DesktopPlaylistSidebar = ({
 
       {/* SCROLLING EPISODES PLAYLIST SLOT TRACK */}
       {/* RENDER CHUNK LIST GRID ONLY */}
-      <div className="flex flex-col gap-2.5 overflow-y-auto pr-1">
+      <div className="flex flex-col gap-2.5 overflow-y-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pr-1">
         {paginatedEpisodeList.length === 0 ? (
           <div className="text-center text-white/30 text-[13px] py-12">
             <p>No episodes matched this source channel.</p>
@@ -185,4 +185,4 @@ export const DesktopPlaylistSidebar = ({
       </div>
     </div>
   );
-};;;;
+};
