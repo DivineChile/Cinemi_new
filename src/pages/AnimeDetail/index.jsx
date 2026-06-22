@@ -50,6 +50,7 @@ function AnimeDetail() {
 
       {relatedMediaRaw.length > 0 && (
         <CarouselRow
+          key="related"
           title="Related Media"
           seeAllLink="#"
           overrideData={relatedMediaRaw
@@ -61,7 +62,8 @@ function AnimeDetail() {
             )
             .map((item) => ({
               id: item?.node?.id,
-              to: `/anime/${item?.node.id}`,
+              mobileHref: `/anime/${item?.node?.id}`,
+              desktopHref: `/watch/${item?.node?.id}`,
               poster:
                 item?.node?.coverImage?.extraLarge ||
                 item?.node?.coverImage?.large,
@@ -82,11 +84,13 @@ function AnimeDetail() {
       {/* 🌟 SECTION 2: COMMUNITY RECOMMENDATIONS ("If you liked X, you'll like Y") */}
       {recommendationsRaw.length > 0 && (
         <CarouselRow
+          key="recommended"
           title="Recommendedations"
           seeAllLink="#"
           overrideData={recommendationsRaw.map((item) => ({
             id: item.id,
-            to: `/anime/${item.id}`,
+            mobileHref: `/anime/${item.id}`,
+            desktopHref: `/watch/${item.id}`,
             poster: item.coverImage?.extraLarge || item.coverImage?.large,
             title:
               item.title?.english || item.title?.romaji || item.title?.native,
