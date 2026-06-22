@@ -198,7 +198,7 @@ export const CarouselRow = ({
                     title={anime.title}
                     score={anime.score}
                     seasonYear={anime.seasonYear}
-                    animeFormat={anime.format}
+                    animeFormat={anime.animeFormat}
                   />
                 </div>
               ))}
