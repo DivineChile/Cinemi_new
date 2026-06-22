@@ -15,7 +15,7 @@ export const SearchBannerHeader = ({
       Cinematic deep-tint header section. 
       Utilizes a soft backdrop gradient overlay to mimic a movie catalog dashboard entrance.
     */
-    <div className="w-full bg-gradient-to-b mt-10 from-black/40 via-neutral-950/20 to-transparent border-b border-white/5 py-10 md:py-14 font-[Inter] select-none">
+    <div className="w-full mt-10 bg-(--neutral-color) border-b border-white/5 py-10 md:py-14 font-[Inter] select-none">
       <div className="max-w-7xl mx-auto px-4 flex flex-col gap-2.5">
         {/* Dynamic Badge Context Tag Row */}
         <div className="flex items-center gap-2 text-(--brand-color) text-[11px] font-extrabold uppercase font-mono tracking-widest">

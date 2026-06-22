@@ -23,7 +23,7 @@ function Navbar({ setIsSearchOpen, isScrolled }) {
   const location = useLocation();
   return (
     <header
-      className={`fixed top-0 ${location.pathname.includes("watch") ? "hidden" : "block"} left-0 w-full z-50 transition-all duration-300 ${isScrolled ? "bg-[#0a0a0a] shadow-md border-b border-b-white/5" : !location.pathname.includes("watch") ? "bg-[#0a0a0a] shadow-md border-b border-b-white/5" : "bg-transparent"}`}
+      className={`fixed top-0 ${location.pathname.includes("watch") ? "hidden" : "block"} left-0 w-full z-50 transition-all duration-300 ${isScrolled ? "bg-[#0a0a0a] shadow-md border-b border-b-white/5" : "bg-transparent"}`}
     >
       <div className="max-w-7xl mx-auto px-4">
         <div className="navbar-inner flex justify-between items-center h-[64px]">
