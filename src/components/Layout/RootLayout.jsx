@@ -40,8 +40,8 @@ function RootLayout() {
         <Outlet />
       </main>
 
-      <Footer currentYear={currentYear}/>
-      
+      <Footer currentYear={currentYear} />
+
       <SearchModal isOpen={isSearchOpen} setIsOpen={setIsSearchOpen} />
       <BackToTop />
     </div>

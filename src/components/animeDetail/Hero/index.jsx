@@ -2,14 +2,80 @@ import { Link } from "react-router-dom";
 import {
   Play,
   Plus,
+  Check,
   Star,
   Calendar,
   Clock,
   Film,
   ChevronLeft,
 } from "lucide-react";
+import { useState, useEffect } from "react";
 
 function Hero({ loading, error, anime }) {
+  // 🌟 LOCAL SYNC STATE: Track if this specific title exists inside local storage cookies
+  const [isSaved, setIsSaved] = useState(false);
+
+  // 🌟 EFFECT 1: Check client cache storage history on item mount layers
+  useEffect(() => {
+    if (!anime?.id) return;
+
+    const checkWatchlistStatus = () => {
+      const localList = localStorage.getItem("cinemi_watchlist");
+      if (localList) {
+        const currentList = JSON.parse(localList);
+        const exists = currentList.some(
+          (item) => item.id.toString() === anime.id.toString(),
+        );
+        setIsSaved(exists);
+      }
+    };
+
+    checkWatchlistStatus();
+
+    // Listen for storage change signals across cross-tab configurations
+    window.addEventListener("storage", checkWatchlistStatus);
+    return () => window.removeEventListener("storage", checkWatchlistStatus);
+  }, [anime?.id]);
+
+  // 🌟 CLICK HANDLER: Toggles asset parameters securely inside local database storage
+  const handleWatchlistToggle = () => {
+    if (!anime?.id) return;
+
+    const localList = localStorage.getItem("cinemi_watchlist");
+    let currentList = localList ? JSON.parse(localList) : [];
+
+    if (isSaved) {
+      // Option A: Remove existing database node reference key
+      currentList = currentList.filter(
+        (item) => item.id.toString() !== anime.id.toString(),
+      );
+      setIsSaved(false);
+    } else {
+      // Option B: Map and append a fresh normalization card matching your ContentCard layout schemas
+      const newWatchlistItem = {
+        id: anime.id,
+        title: anime.title,
+        poster:
+          anime.coverImage?.extraLarge ||
+          anime.coverImage?.large ||
+          anime.bannerImage,
+        score: anime.score,
+        seasonYear: anime.seasonYear || "N/A",
+        format: anime.format || "N/A",
+        status: "planned", // Baseline filter tag tier
+        updatedAt: Date.now(),
+      };
+      currentList.push(newWatchlistItem);
+      setIsSaved(true);
+    }
+
+    // Rewrite changes back to browser memory cookies directory
+    localStorage.setItem("cinemi_watchlist", JSON.stringify(currentList));
+
+    // Fire event communication dispatch broadcast
+    window.dispatchEvent(new Event("storage"));
+  };
+
   // 4. Integrated Skeleton Loader Overlay state
   if (loading) {
     return (
@@ -118,10 +184,24 @@ function Hero({ loading, error, anime }) {
 
             <button
               type="button"
-              className="button flex gap-2 w-full sm:w-fit justify-center items-center bg-white/5 hover:bg-white/10 text-white transition-all duration-300 border border-white/10 font-[Inter] text-[14px] font-bold uppercase py-3.5 px-8 rounded-lg transform hover:-translate-y-0.5 active:translate-y-0"
+              onClick={handleWatchlistToggle}
+              className={`button flex gap-2 w-full sm:w-fit justify-center items-center font-[Inter] text-[14px] font-bold uppercase py-3.5 px-8 rounded-lg transform hover:-translate-y-0.5 transition-all duration-300 border ${
+                isSaved
+                  ? "bg-[#0060b2]/20 border-[#0060b2]/40 text-blue-400 hover:bg-[#0060b2]/30 hover:border-[#0060b2]/60 shadow-lg shadow-green-950/20"
+                  : "bg-white/5 hover:bg-white/10 border-white/10 text-white"
+              }`}
             >
-              <Plus size={16} />
-              Watchlist
+              {isSaved ? (
+                <>
+                  <Check size={16} strokeWidth={2.5} />
+                  <span>On Watchlist</span>
+                </>
+              ) : (
+                <>
+                  <Plus size={16} />
+                  <span>Watchlist</span>
+                </>
+              )}
             </button>
           </div>
         </div>

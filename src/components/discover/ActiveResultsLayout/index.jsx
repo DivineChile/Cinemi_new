@@ -6,7 +6,7 @@ export default function ActiveResultsLayout({ results = [], loading, error }) {
   // Renders a grid of 15 empty pulse-cards to shield against content displacement jumps
   if (loading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-8 py-2 w-full">
+      <div className="grid grid-cols-2 mb-10 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-8 py-2 w-full">
         {Array.from({ length: 15 }).map((_, index) => (
           <div
             key={`discover-skeleton-${index}`}
@@ -27,7 +27,7 @@ export default function ActiveResultsLayout({ results = [], loading, error }) {
   // 🌟 VIEW STATE 2: ERROR GATE OVERLAY
   if (error) {
     return (
-      <div className="w-full bg-white/5 border border-white/10 rounded-2xl p-16 flex flex-col items-center justify-center gap-3 text-center font-[Inter] py-20">
+      <div className="w-full bg-white/5 mb-10 border border-white/10 rounded-2xl p-16 flex flex-col items-center justify-center gap-3 text-center font-[Inter] py-20">
         <AlertCircle size={40} className="text-[#b11226]/80 animate-bounce" />
         <div className="flex flex-col gap-1">
           <p className="text-[18px] font-bold text-white">Connection Error</p>
@@ -43,7 +43,7 @@ export default function ActiveResultsLayout({ results = [], loading, error }) {
   // 🌟 VIEW STATE 3: MATCH ZERO FILTERED EMPTY FALLBACK BANNER
   if (results.length === 0) {
     return (
-      <div className="w-full bg-white/5 border border-white/10 rounded-2xl p-16 flex flex-col items-center justify-center gap-3 text-center font-[Inter] py-24">
+      <div className="w-full bg-white/5 border mb-10 border-white/10 rounded-2xl p-16 flex flex-col items-center justify-center gap-3 text-center font-[Inter] py-24">
         <Compass size={40} className="text-white/20" />
         <div className="flex flex-col gap-1">
           <p className="text-[18px] font-bold text-white/90">No Anime Found</p>
@@ -58,7 +58,7 @@ export default function ActiveResultsLayout({ results = [], loading, error }) {
 
   // 🌟 VIEW STATE 4: PRIMARY MULTI-COLUMN CONTENT MATRIX DISPLAY GRID
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-8 py-2 w-full animate-[fade-in_0.3s_ease-out]">
+    <div className="grid grid-cols-2 sm:grid-cols-3 mb-10 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-8 py-2 w-full animate-[fade-in_0.3s_ease-out]">
       {results.map((anime) => {
         const mobileHref = `/anime/${anime.id}`;
         const desktopHref = `/watch/${anime.id}`;
@@ -68,10 +68,12 @@ export default function ActiveResultsLayout({ results = [], loading, error }) {
         const animePoster = anime?.coverImage?.large;
         const animeScore =
           (anime?.averageScore / 10).toFixed(1) ||
-          (anime?.meanScore / 10).toFixed(1) || "0.0";
-        const animeSeasonYear = anime?.seasonYear || anime?.startDate?.year || "N/A";
+          (anime?.meanScore / 10).toFixed(1) ||
+          "0.0";
+        const animeSeasonYear =
+          anime?.seasonYear || anime?.startDate?.year || "N/A";
         const animeFormat = anime?.format;
-        console.log(anime);
+
         return (
           /* 
            Wrapper containers automatically dictate item widths globally, 
