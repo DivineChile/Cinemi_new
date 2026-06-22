@@ -66,6 +66,22 @@ export const SearchModal = ({ isOpen, setIsOpen }) => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [setIsOpen]);
 
+  // 🌟 HYDRATION EFFECT MATRIX: Completely blocks parent background scroll bleeding
+  useEffect(() => {
+    if (isOpen) {
+      // Lock body scrolling instantly when modal drops into view
+      document.body.style.overflow = "hidden";
+    } else {
+      // Restore clean scrolling layout flow when modal finishes its fade out
+      document.body.style.overflow = "unset";
+    }
+
+    // GARBAGE COLLECTION GARBAGE COLLECTION: Safety fallback cleanup if user unmounts routes mid-search
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
+
   return (
     /* 
       🌟 FIX: Component remains permanently mounted. 

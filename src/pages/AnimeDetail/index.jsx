@@ -24,7 +24,6 @@ function AnimeDetail() {
         if (!response.ok) setError("Failed to retrieve anime details");
         const data = await response.json();
 
-        console.log(data);
         setAnimeData(data);
       } catch (err) {
         console.error(err);
@@ -48,6 +47,7 @@ function AnimeDetail() {
       <Hero loading={loading} error={error} anime={animeData} />
       <MetaInfo loading={loading} error={error} rawApiData={animeData} />
       <AnimeEpisodes />
+
       {relatedMediaRaw.length > 0 && (
         <CarouselRow
           title="Related Media"
@@ -73,7 +73,8 @@ function AnimeDetail() {
                 ? (item?.node?.meanScore / 10).toFixed(1)
                 : "0.0",
               // Display the specific relationship format as the card subtitle (e.g., SEQUEL · TV)
-              genres: `${item?.relationType || "RELATED"} • ${item?.node?.format || "ANIME"}`,
+              seasonYear: item?.node?.seasonYear || "N/A",
+              animeFormat: item?.node?.format || "N/A",
             }))}
         />
       )}
@@ -92,7 +93,8 @@ function AnimeDetail() {
             score: item.averageScore
               ? (item.averageScore / 10).toFixed(1)
               : "0.0",
-            genres: item.genres ? item.genres.slice(0, 2).join(", ") : "Anime",
+            seasonYear: item?.seasonYear || "N/A",
+            animeFormat: item?.format || "N/A",
           }))}
         />
       )}
