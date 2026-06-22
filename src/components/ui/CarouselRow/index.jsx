@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
 import ContentCard from "../ContentCard";
-import { useMediaQuery } from "../../../hooks/useMediaQuery";
 
 // Replace this with your actual Cloudflare Worker URL
 const PROXY_API_URL = import.meta.env.VITE_PROXY_API_URL;
@@ -94,7 +93,8 @@ export const CarouselRow = ({
           score: item.averageScore
             ? (item.averageScore / 10).toFixed(1)
             : "0.0",
-          genres: item.genres ? item.genres.slice(0, 2).join(", ") : "Anime",
+          seasonYear: item.seasonYear,
+          animeFormat: item.format,
         }));
 
         setAnimeList(formattedData);
@@ -180,7 +180,7 @@ export const CarouselRow = ({
                   key={`skeleton-${index}`}
                   className="flex-[0_0_144px] md:flex-[0_0_230px] min-w-[144px] md:min-w-[230px] animate-pulse flex flex-col gap-2"
                 >
-                  <div className="w-[144px] md:w-[230px] h-[216px] md:h-[345px] bg-white/5 rounded-xl" />
+                  <div className="w-full aspect-[2/3] bg-white/5 rounded-xl" />
                   <div className="h-4 bg-white/10 rounded w-[80%] mt-1" />
                   <div className="h-3 bg-white/5 rounded w-[50%]" />
                 </div>
@@ -197,7 +197,8 @@ export const CarouselRow = ({
                     poster={anime.poster}
                     title={anime.title}
                     score={anime.score}
-                    genres={anime.genres}
+                    seasonYear={anime.seasonYear}
+                    animeFormat={anime.format}
                   />
                 </div>
               ))}

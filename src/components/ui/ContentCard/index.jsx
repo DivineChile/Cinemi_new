@@ -10,7 +10,8 @@ function ContentCard({
   poster,
   title,
   score,
-  genres,
+  seasonYear,
+  animeFormat,
 }) {
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const activeHref = isDesktop ? desktopHref : mobileHref;
@@ -18,10 +19,10 @@ function ContentCard({
     <Link
       to={activeHref}
       key={id}
-      className="content-card group flex flex-col w-[144px] md:w-[230px]"
+      className="content-card group flex flex-col w-full select-none"
     >
       {/* Poster image box frame */}
-      <div className="poster-container w-full h-[216px] md:h-[345px] relative overflow-hidden rounded-xl bg-gray-900">
+      <div className="poster-container w-full aspect-[2/3] shadow-md relative overflow-hidden rounded-xl bg-gray-900">
         <SmoothImage
           src={poster}
           alt={title}
@@ -50,7 +51,8 @@ function ContentCard({
           {title}
         </h1>
         <p className="flex gap-1 items-center text-[14px] font-[Inter] text-[#a1a1a1] truncate">
-          ⭐ {score} • {genres}
+          ⭐ {score} • {animeFormat}
+          <span className="">• {seasonYear}</span>
         </p>
       </div>
     </Link>

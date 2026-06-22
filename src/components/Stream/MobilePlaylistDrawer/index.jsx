@@ -76,19 +76,21 @@ export const MobilePlaylistDrawer = ({
       Visibility is handled gracefully by its child structural nodes.
     */
     <div
-      className={`lg:hidden fixed inset-0 z-50 flex flex-col justify-end font-[Inter] ${
-        isOpen ? "visible" : "invisible"
+      className={`lg:hidden fixed inset-0 z-50 flex flex-col justify-end font-[Inter] transition-all duration-500 ${
+        isOpen
+          ? "visible opacity-100 pointer-events-auto"
+          : "invisible opacity-0 pointer-events-none"
       }`}
     >
-      {/* 1. Backdrop Scrim Layer: Handles the independent clean opacity alpha transition fade */}
+      {/* 1. Backdrop Scrim Layer: Seamlessly fades out alpha levels alongside the parent container */}
       <div
-        className={`absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-300 ease-out ${
+        className={`absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-500 cubic-bezier(0.16,1,0.3,1) ${
           isOpen ? "opacity-100" : "opacity-0"
         }`}
         onClick={() => setIsOpen(false)}
       />
 
-      {/* 2. Sliding Content Tray Container: Handles the native app fluid translation slide-up */}
+      {/* 2. Sliding Content Tray Container: Executes a hardware-accelerated slide-down transition */}
       <div
         className={`w-full bg-[#0c0c0c] border-t border-white/10 rounded-t-3xl max-h-[70vh] flex flex-col relative z-50 transition-transform duration-500 transform ease-[cubic-bezier(0.16,1,0.3,1)] ${
           isOpen ? "translate-y-0" : "translate-y-full"
@@ -105,7 +107,7 @@ export const MobilePlaylistDrawer = ({
           <button
             type="button"
             onClick={() => setIsOpen(false)}
-            className="p-1.5 rounded-full bg-white/5 text-white/60 hover:text-white transition-colors"
+            className="p-1.5 rounded-full bg-white/5 text-white/60 hover:text-white transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -119,31 +121,30 @@ export const MobilePlaylistDrawer = ({
           <select
             value={activeProvider}
             onChange={(e) => handleSourceRedirect(e.target.value)}
-            className="w-1/2 bg-[#121212] border border-white/10 rounded-lg p-2.5 uppercase text-white outline-none"
+            className="w-1/2 bg-[#121212] border border-white/10 rounded-lg p-2.5 uppercase text-white outline-none cursor-pointer"
           >
-            {Object.entries(episodeData?.providers)
-              .filter(([key]) => workingProviders.includes(key))
-              .map(([pKey]) => {
-                return (
-                  <option key={pKey} value={pKey} className="bg-[#0a0a0a]">
-                    Src: {pKey}
-                  </option>
-                );
-              })}
+            {Object.entries(episodeData?.providers || {})
+              .filter(([key]) => workingProviders?.includes(key))
+              .map(([pKey]) => (
+                <option key={pKey} value={pKey} className="bg-[#0a0a0a]">
+                  Src: {pKey}
+                </option>
+              ))}
           </select>
           <select
             value={activeAudio}
             onChange={(e) => handleAudioRedirect(e.target.value)}
-            className="w-1/2 bg-[#121212] border border-white/10 rounded-lg p-2.5 uppercase text-white outline-none"
+            className="w-1/2 bg-[#121212] border border-white/10 rounded-lg p-2.5 uppercase text-white outline-none cursor-pointer"
           >
             <option value="sub">Audio: SUB</option>
             <option value="dub">Audio: DUB</option>
           </select>
         </div>
 
-        {episodeChunks.length > 1 && (
+        {/* Pagination Range Selectors */}
+        {episodeChunks?.length > 1 && (
           <div
-            className="px-3 py-2 bg-[#101010] border-b border-white/5 flex items-center gap-3 overflow-x-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden shrink-0 scrollbar-none"
+            className="px-3 py-2 bg-[#101010] border-b border-white/5 flex items-center gap-3 overflow-x-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden shrink-0"
             onClick={(e) => e.stopPropagation()}
           >
             <span className="text-[10px] text-[#a1a1a1] font-bold uppercase tracking-wider flex items-center gap-1 shrink-0">
@@ -155,7 +156,11 @@ export const MobilePlaylistDrawer = ({
                   key={index}
                   type="button"
                   onClick={() => setActiveChunkIndex(index)}
-                  className={`px-3 py-1.5 cursor-pointer rounded-lg text-[11px] font-bold tracking-wide shrink-0 transition-all ${index === activeChunkIndex ? "bg-white text-black" : "bg-white/5 border border-white/5 text-white/60"}`}
+                  className={`px-3 py-1.5 cursor-pointer rounded-lg text-[11px] font-bold tracking-wide shrink-0 transition-all ${
+                    index === activeChunkIndex
+                      ? "bg-white text-black"
+                      : "bg-white/5 border border-white/5 text-white/60 hover:text-white"
+                  }`}
                 >
                   {index * 100 + 1} -{" "}
                   {Math.min((index + 1) * 100, totalEpisodeList.length)}
@@ -166,9 +171,8 @@ export const MobilePlaylistDrawer = ({
         )}
 
         {/* Dynamic Playlist List Grid */}
-        {/* Scrolling Episode Grid Frame (Render paginated rows only) */}
         <div className="p-4 overflow-y-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden flex flex-col gap-2.5 bg-[#0a0a0a]">
-          {paginatedEpisodeList.length === 0 ? (
+          {paginatedEpisodeList?.length === 0 ? (
             <div className="text-center text-white/30 text-[13px] py-12 flex flex-col items-center gap-2">
               <AlertCircle size={20} className="opacity-50" />
               <p>No episodes matched this settings channel.</p>
@@ -184,7 +188,11 @@ export const MobilePlaylistDrawer = ({
                   key={ep.number || ep.id}
                   to={`/watch/${activeProvider}/${id}/${activeAudio}/${epSlugToken}`}
                   onClick={() => setIsOpen(false)}
-                  className={`flex items-center gap-3.5 p-2.5 rounded-xl border transition-all duration-300 ${isSelected ? "bg-(--primary-color) border-(--primary-color) text-white font-bold" : "bg-white/5 border-transparent text-white/80"}`}
+                  className={`flex items-center gap-3.5 p-2.5 rounded-xl border transition-all duration-300 ${
+                    isSelected
+                      ? "bg-(--primary-color) border-(--primary-color) text-white font-bold shadow-lg shadow-red-950/20"
+                      : "bg-white/5 border-transparent text-white/80 hover:bg-white/10"
+                  }`}
                 >
                   <div className="w-16 aspect-video rounded-md overflow-hidden bg-neutral-900 relative shrink-0">
                     {ep.image ? (

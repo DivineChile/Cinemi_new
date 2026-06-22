@@ -7,6 +7,8 @@ import { Link } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
+import { SmoothImage } from "../../ui/SmoothImage";
+import { Info, Play } from "lucide-react";
 
 function Hero() {
   // 1. Initialize Embla Carousel with Autoplay (4 second delay)
@@ -152,12 +154,16 @@ function Hero() {
               key={slide.id}
               className="flex-[0_0_100%] min-w-0 h-full w-full relative"
             >
-              <img
+              <SmoothImage
                 src={slide.bgImage}
                 alt={slide.title}
-                // Native Lazy Loading (Eager for slide 1 to prevent layout shift, lazy for others)
+                /* 
+                  Performance Optimization: Force immediate 'eager' loading for the very first 
+                  slide to optimize LCP speed scores, while allowing secondary hidden carousel 
+                  panes to lazy-load smoothly in the background.
+                */
                 loading={index === 0 ? "eager" : "lazy"}
-                className="h-full w-full object-cover transition-all duration-300"
+                className="h-full w-full object-cover"
               />
             </div>
           ))}
@@ -221,24 +227,17 @@ function Hero() {
           <div className="buttons flex flex-col sm:flex-row gap-4 items-center">
             <Link
               to={`/watch/${slides[selectedIndex].id}`}
-              className="button flex gap-3 w-full sm:w-fit text-[16px] md:text-[14px] justify-center items-center bg-(--primary-color) font-[Inter] text-[14px] uppercase py-4 sm:py-3 px-6 rounded-sm"
+              className="button flex gap-2 w-full sm:w-fit justify-center items-center bg-(--primary-color) hover:bg-[#b11226] font-[Inter] text-[14px] font-semibold uppercase py-3.5 px-8 rounded-lg shadow-lg shadow-[#b11226]/20 transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0"
             >
-              <img
-                src={playIcon}
-                className="h-[14px] w-[11px]"
-                alt="Play Icon"
-              />
+              <Play size={16} fill="currentColor" />
               Watch Now
             </Link>
+
             <Link
-              to={`/anime/${slides[selectedIndex].id}`} // Dynamic link to anime details page
-              className="button flex gap-3 w-full sm:w-fit text-[16px] md:text-[14px] justify-center items-center bg-white/5 hover:bg-white/10 transition-colors duration-300 border border-white/20 font-[Inter] text-[14px] uppercase py-4 sm:py-3 px-6 rounded-sm"
+              to={`/anime/${slides[selectedIndex].id}`}
+              className="button flex gap-2 w-full sm:w-fit justify-center items-center bg-white/5 hover:bg-white/10 text-white transition-all duration-300 border border-white/10 font-[Inter] text-[14px] font-semibold uppercase py-3.5 px-8 rounded-lg transform hover:-translate-y-0.5 active:translate-y-0"
             >
-              <img
-                src={detailsIcon}
-                className="h-[14px] w-[11px]"
-                alt="Details Icon"
-              />
+              <Info size={16} />
               Details
             </Link>
           </div>

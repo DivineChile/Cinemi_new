@@ -267,20 +267,20 @@ function Stream() {
       {!isDimmed && recommendations.length > 0 && (
         <div className="mt-10 pb-10 mb:pb-1 opacity-90 border-t border-white/5 pt-4">
           <CarouselRow
-            title="Watch Worthy"
+            title="You May Also Like..."
             seeAllLink="#"
             overrideData={recommendations.slice(0, 10).map((item) => ({
               id: item.id,
-              to: `/anime/${item.id}`,
+              mobileHref: `/anime/${item.id}`,
+              desktopHref: `/watch/${item.id}`,
               poster: item.coverImage?.extraLarge || item.coverImage?.large,
               title:
                 item.title?.english || item.title?.romaji || item.title?.native,
               score: item.averageScore
                 ? (item.averageScore / 10).toFixed(1)
                 : "0.0",
-              genres: item.genres
-                ? item.genres.slice(0, 2).join(", ")
-                : "Anime",
+              seasonYear: item.seasonYear || item?.startDate?.year || "",
+              format: item.format || "N/A",
             }))}
           />
         </div>

@@ -5,7 +5,7 @@ export const SmoothImage = ({ src, alt, className, loading = "lazy" }) => {
 
   return (
     <div
-      className={`relative w-full h-full bg-white/5 overflow-hidden transition-colors duration-300 ${!isLoaded ? "animate-pulse" : ""}`}
+      className={`relative w-full h-full bg-white/5 overflow-hidden transition-colors duration-300 ${!isLoaded ? "animate-pulse bg-neutral-900" : ""}`}
     >
       <img
         src={src}
