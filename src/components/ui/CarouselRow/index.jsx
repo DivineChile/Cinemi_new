@@ -3,11 +3,17 @@ import { Link } from "react-router-dom";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
 import ContentCard from "../ContentCard";
+import { useMediaQuery } from "../../../hooks/useMediaQuery";
 
 // Replace this with your actual Cloudflare Worker URL
 const PROXY_API_URL = import.meta.env.VITE_PROXY_API_URL;
 
-export const CarouselRow = ({ title, endpoint, seeAllLink = "/", overrideData = null }) => {
+export const CarouselRow = ({
+  title,
+  endpoint,
+  seeAllLink = "/",
+  overrideData = null,
+}) => {
   const [animeList, setAnimeList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -49,12 +55,12 @@ export const CarouselRow = ({ title, endpoint, seeAllLink = "/", overrideData = 
   }, [emblaApi, onSelect, animeList]);
 
   useEffect(() => {
-     if (overrideData) {
-       setAnimeList(overrideData);
-       setLoading(false);
-       setError(null);
-       return; // Skip endpoint fetching entirely if data is already passed as a prop!
-     }
+    if (overrideData) {
+      setAnimeList(overrideData);
+      setLoading(false);
+      setError(null);
+      return; // Skip endpoint fetching entirely if data is already passed as a prop!
+    }
 
     const fetchRowData = async () => {
       try {
@@ -80,7 +86,8 @@ export const CarouselRow = ({ title, endpoint, seeAllLink = "/", overrideData = 
         // 2. Map over the SAFE filtered items instead of rawResults
         const formattedData = filteredResults.map((item) => ({
           id: item.id,
-          to: `/anime/${item.id}`,
+          mobileHref: `/anime/${item.id}`,
+          desktopHref: `/watch/${item.id}`,
           poster: item.coverImage?.extraLarge || item.coverImage?.large,
           title:
             item.title?.english || item.title?.romaji || item.title?.native,
@@ -107,7 +114,9 @@ export const CarouselRow = ({ title, endpoint, seeAllLink = "/", overrideData = 
       {/* Dynamic Header Block Layer */}
       <div className="max-w-7xl mx-auto px-4 mb-4">
         <div className="header flex justify-between items-center">
-          <h2 className="text-[20px] md:text-[24px] font-bold text-white">{title}</h2>
+          <h2 className="text-[20px] md:text-[24px] font-bold text-white">
+            {title}
+          </h2>
 
           {/* Action Group: Holds your original 'See All' Link and the new arrow controls */}
           <div className="flex items-center gap-4">
@@ -183,7 +192,8 @@ export const CarouselRow = ({ title, endpoint, seeAllLink = "/", overrideData = 
                   className="flex-[0_0_144px] md:flex-[0_0_230px] min-w-[144px] md:min-w-[230px]"
                 >
                   <ContentCard
-                    to={anime.to}
+                    mobileHref={anime.mobileHref}
+                    desktopHref={anime.desktopHref}
                     poster={anime.poster}
                     title={anime.title}
                     score={anime.score}

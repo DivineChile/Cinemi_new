@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { AlertCircle, Film } from "lucide-react";
 import { Player } from "../Player";
 
-export const VideoCanvas = ({ videoUrl, loadingVideo, provider, referer }) => {
+export const VideoCanvas = ({ videoUrl, loadingVideo, provider, referer, totalEpisodeList, animeTitle, episodeThumbnail }) => {
   // 🎰 MULTI-TIER PLAYER STATE MACHINE
   // Options: 'hls' (Direct proxy stream), 'iframe' (Embedded fallback), 'failed' (All sources down)
   const [playerTier, setPlayerTier] = useState("hls");
@@ -71,6 +71,9 @@ export const VideoCanvas = ({ videoUrl, loadingVideo, provider, referer }) => {
           referer={referer}
           triggerIframeFallback={triggerIframeFallback}
           playerTier={playerTier}
+          totalEpisodeList={totalEpisodeList}
+          animeTitle={animeTitle}
+          episodeThumbnail={episodeThumbnail}
         />
       )}
 

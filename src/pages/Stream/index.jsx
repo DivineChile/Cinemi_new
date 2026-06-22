@@ -204,6 +204,13 @@ function Stream() {
     );
   }
 
+  const activeAnimeTitle =
+    episodeData?.mappings?.title?.english ||
+    episodeData?.mappings?.title?.romaji ||
+    episodeData?.mappings?.title ||
+    "Active Anime";
+  const activeEpisodeImg = currentActiveEpisodeObj?.image || "";
+
   return (
     <div className="bg-(--neutral-color) min-h-screen relative pb-28 overflow-hidden">
       {/* Theater Lights Dim Switch Header */}
@@ -218,6 +225,9 @@ function Stream() {
             loadingVideo={loadingVideo}
             provider={provider}
             referer={activeReferer}
+            totalEpisodeList={activeEpisodeList}
+            animeTitle={activeAnimeTitle}
+            episodeThumbnail={activeEpisodeImg}
           />
 
           {/* 🌟 FIX: Active Episode Meta now automatically hides when 'isDimmed' is active */}

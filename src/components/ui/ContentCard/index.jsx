@@ -1,11 +1,23 @@
 import { Play, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SmoothImage } from "../SmoothImage";
+import { useMediaQuery } from "../../../hooks/useMediaQuery";
 
-function ContentCard({ to, id, poster, title, score, genres }) {
+function ContentCard({
+  mobileHref,
+  desktopHref,
+  id,
+  poster,
+  title,
+  score,
+  genres,
+}) {
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const activeHref = isDesktop ? desktopHref : mobileHref;
   return (
     <Link
-      to={to}
+      to={activeHref}
+      key={id}
       className="content-card group flex flex-col w-[144px] md:w-[230px]"
     >
       {/* Poster image box frame */}
