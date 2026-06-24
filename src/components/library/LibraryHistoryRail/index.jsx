@@ -6,7 +6,7 @@ export default function LibraryHistoryRail({ historyList = [], onRemoveItem }) {
   if (historyList.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-4 animate-[fade-in_0.3s_ease-out] font-[Inter]">
+    <div className="flex flex-col gap-4 animate-[fade-in_0.3s_ease-out]">
       {/* Section Subheading Title Header */}
       <h2 className="text-[18px] font-black uppercase tracking-wider text-white/90 flex items-center gap-2 select-none">
         <Clock size={16} className="text-(--brand-color) animate-pulse" />

@@ -5,6 +5,7 @@ import Hero from "../../components/animeDetail/Hero";
 import MetaInfo from "../../components/animeDetail/MetaInfo";
 import { AnimeEpisodes } from "../../components/animeDetail/AnimeEpisodes";
 import { CarouselRow } from "../../components/ui/CarouselRow";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
 function AnimeDetail() {
   const { animeId } = useParams();
@@ -13,6 +14,14 @@ function AnimeDetail() {
   const [error, setError] = useState(null);
 
   const PROXY_API_URL = import.meta.env.VITE_PROXY_API_URL;
+
+  // Extract clean title string parameter safely
+  const pageTitle =
+    animeData?.title?.english ||
+    animeData?.title?.romaji ||
+    "Loading Details...";
+
+  useDocumentTitle(pageTitle);
 
   useEffect(() => {
     const getAnimeData = async () => {

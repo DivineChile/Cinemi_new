@@ -4,10 +4,11 @@ import { SearchBannerHeader } from "../../components/discover/SearchBannerHeader
 import AdvancedFilterBar from "../../components/discover/AdvancedFilterBar";
 import ActiveResultsLayout from "../../components/discover/ActiveResultsLayout";
 import PaginationControls from "../../components/discover/PaginationControls";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
 const PROXY_API_URL = import.meta.env.VITE_PROXY_API_URL;
 
-export default function Discover () {
+export default function Discover() {
   // 1. React Router search parameters synchronization hook
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -24,6 +25,16 @@ export default function Discover () {
   // Automatically hydrates its defaults based on whatever is present in the browser URL bar
   const currentQuery = searchParams.get("query") || "";
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
+
+  const activeGenre = searchParams.get("genre");
+
+  const computedTitle = currentQuery
+    ? `Results for "${currentQuery}"`
+    : activeGenre
+      ? `${activeGenre} Category`
+      : "Discover Anime";
+
+  useDocumentTitle(computedTitle);
 
   const [filters, setFilters] = useState({
     genre: searchParams.get("genre") || "",
@@ -202,4 +213,4 @@ export default function Discover () {
       </main>
     </div>
   );
-};
+}

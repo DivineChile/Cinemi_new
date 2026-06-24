@@ -5,8 +5,11 @@ import RecentlyAdded from "../../components/home/RecentlyAdded";
 import Recommendations from "../../components/home/Recommendations";
 import Trending from "../../components/home/Trending";
 import { Watching } from "../../components/home/Watching";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
 function Home() {
+  useDocumentTitle("Home");
+
   return (
     <div className="">
       <Hero />

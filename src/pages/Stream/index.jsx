@@ -7,6 +7,7 @@ import { DesktopPlaylistSidebar } from "../../components/Stream/DesktopPlaylistS
 import { MobilePlaylistDrawer } from "../../components/Stream/MobilePlaylistDrawer";
 import { ChevronUp } from "lucide-react";
 import { CarouselRow } from "../../components/ui/CarouselRow";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
 function Stream() {
   const PROXY_API_URL = import.meta.env.VITE_PROXY_API_URL;
@@ -179,6 +180,13 @@ function Stream() {
     streamData?.headers?.referer || streamData?.streams?.[0]?.url || "";
 
   const activeReferer = streamData?.streams?.[0]?.referer || "";
+
+  const rawEpisodeNum = slug?.split("-")?.pop();
+  const formattedEpisode = isNaN(rawEpisodeNum)
+    ? "Active"
+    : `EP ${rawEpisodeNum}`;
+
+  useDocumentTitle(`Watching ${formattedEpisode}`);
 
   if (loadingLayout) {
     return (

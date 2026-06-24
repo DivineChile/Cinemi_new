@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import LibraryStats from "../../components/library/LibraryStats";
 import LibraryHistoryRail from "../../components/library/LibraryHistoryRail";
 import WatchlistHub from "../../components/library/WatchlistHub";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
 export default function Library() {
   // 🌟 CORE MASTER CONTEXT STATES
@@ -10,6 +11,7 @@ export default function Library() {
   const [historyList, setHistoryList] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  useDocumentTitle("My Library");
   // 1. DATA HYDRATION AND DISCOVERY CORE ENGINE
   // Inside LibraryPage.jsx, update your initialization useEffect to include a window storage event monitor:
   useEffect(() => {
