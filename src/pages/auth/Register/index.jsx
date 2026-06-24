@@ -10,6 +10,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useState } from "react";
+import { useDocumentTitle } from "../../../hooks/useDocumentTitle";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -24,6 +25,8 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  useDocumentTitle("Register");
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

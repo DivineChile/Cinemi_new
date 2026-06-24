@@ -9,6 +9,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useState } from "react";
+import { useDocumentTitle } from "../../../hooks/useDocumentTitle";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -18,6 +19,8 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  useDocumentTitle("Log In");
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
