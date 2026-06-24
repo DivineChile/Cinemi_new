@@ -64,7 +64,7 @@ function Navbar({ setIsSearchOpen, isScrolled }) {
                 className="text-(--brand-color) hidden md:block transition-transform duration-300 hover:scale-110"
               />
             </button>
-            <NavLink to="/profile">
+            <NavLink to="/">
               <img
                 src={profileIcon}
                 className="profileIcon h-[32px] w-[32px] hidden md:block"

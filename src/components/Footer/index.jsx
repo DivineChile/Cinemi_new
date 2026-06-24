@@ -1,4 +1,4 @@
-import { BookMarked, CircleUser, Compass, Home, } from "lucide-react";
+import { BookMarked, CircleUser, Compass, Home } from "lucide-react";
 import { Link, NavLink } from "react-router-dom";
 
 const FooterLinks = [
@@ -39,12 +39,12 @@ const mobileNavLinks = [
     label: "Library",
     to: "/library",
   },
-  {
-    icon: CircleUser,
-    activeState: CircleUser,
-    label: "Profile",
-    to: "/profile",
-  },
+  // {
+  //   icon: CircleUser,
+  //   activeState: CircleUser,
+  //   label: "Profile",
+  //   to: "/profile",
+  // },
 ];
 
 function Footer({ currentYear }) {
@@ -106,7 +106,7 @@ function Footer({ currentYear }) {
               <IconComponent
                 height="20px"
                 width="20px"
-                className={isActive ? "scale-130" : "text-(#a1a1a1)"}              
+                className={isActive ? "scale-130" : "text-(#a1a1a1)"}
               />
               {link.label}
             </NavLink>
