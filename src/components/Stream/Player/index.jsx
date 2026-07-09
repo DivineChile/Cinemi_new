@@ -7,10 +7,7 @@ import "../../../../node_modules/@vidstack/react/player/styles/base.css";
 import "../../../../node_modules/@vidstack/react/player/styles/plyr/theme.css";
 
 import { MediaPlayer, MediaProvider, Track } from "@vidstack/react";
-import {
-  defaultLayoutIcons,
-  DefaultVideoLayout,
-} from "@vidstack/react/player/layouts/default";
+
 
 import {
   PlyrLayout,
