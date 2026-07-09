@@ -8,7 +8,6 @@ import "../../../../node_modules/@vidstack/react/player/styles/plyr/theme.css";
 
 import { MediaPlayer, MediaProvider, Track } from "@vidstack/react";
 
-
 import {
   PlyrLayout,
   plyrLayoutIcons,
@@ -34,7 +33,7 @@ export const Player = ({
 
   // 2. CONTINUE WATCHING PROGRESS INITIAL HYDRATION HOOK
   // Vidstack calls onCanPlay when the media layout engine resolves and is prepared to snap timestamps
-  const handleCanPlay = (detail, nativeEvent) => {
+  const handleCanPlay = () => {
     if (!playerRef.current || !animeId || !episodeStr) return;
 
     const localHistory = localStorage.getItem("cinemi_history");
@@ -62,7 +61,7 @@ export const Player = ({
 
   // 3. THROTTLED HISTORY TRACKER WRITER METHOD
   // Vidstack's onTimeUpdate passes down an object parameter exposing modern state targets directly
-  const handleTimeUpdate = (state, nativeEvent) => {
+  const handleTimeUpdate = () => {
     if (!animeId || !episodeStr) return;
 
     const currentSeconds = state.currentTime;
