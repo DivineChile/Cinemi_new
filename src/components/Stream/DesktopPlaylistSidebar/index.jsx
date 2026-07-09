@@ -1,11 +1,8 @@
-import { SmoothImage } from "../../ui/SmoothImage";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Tv,
   Layers,
-  Image as ImageIcon,
   Play,
-  AlertCircle,
   SlidersHorizontal,
 } from "lucide-react";
 
@@ -16,56 +13,65 @@ export const DesktopPlaylistSidebar = ({
   activeChunkIndex,
   setActiveChunkIndex,
   id,
-  slug,
+  episode,
   activeProvider,
   activeAudio,
 }) => {
   const navigate = useNavigate();
 
-  // Find out what integer episode index number we are currently sitting on
-  const currentEpNumber =
-    totalEpisodeList.find((ep) => {
-      const token = ep.id?.split("/").pop() || ep.number.toString();
-      return slug === token;
-    })?.number || 1;
+  // 1. Cast the active string identifier to an absolute integer safely
+  const currentEpNumber = parseInt(episode, 10) || 1;
 
-  // Handles swapping providers while cleanly preserving the episode number count
+  // 2. Handles swapping providers while cleanly preserving the episode number context
   const handleSourceRedirect = (newProvider) => {
-    const targetProviderDeck =
-      episodeData?.providers?.[newProvider]?.episodes?.[activeAudio] || [];
+    // Locate target provider array entry row matching selection criteria
+    const targetProviderObj = Array.isArray(episodeData)
+      ? episodeData.find(
+          (item) => item.provider === newProvider && item.success,
+        )
+      : null;
 
-    // Find the matching episode object inside the newly selected provider's deck
+    const targetProviderDeck = targetProviderObj?.data?.episodes || [];
+
+    // Map exact or fallback number matches matching structural properties (number vs num)
     const matchingNewEp =
-      targetProviderDeck.find((ep) => ep.number === currentEpNumber) ||
-      targetProviderDeck[0];
+      targetProviderDeck.find(
+        (ep) => (ep.number ?? ep.num) === currentEpNumber,
+      ) || targetProviderDeck[0];
 
-    if (matchingNewEp) {
-      const newSlugToken =
-        matchingNewEp.id?.split("/").pop() || matchingNewEp.number.toString();
-      navigate(`/watch/${newProvider}/${id}/${activeAudio}/${newSlugToken}`);
-    } else {
-      navigate(`/watch/${newProvider}/${id}/${activeAudio}/1`);
-    }
+    const targetEpNum = matchingNewEp
+      ? (matchingNewEp.number ?? matchingNewEp.num)
+      : 1;
+
+    // Direct path routing format constraints: /watch/:provider/:id/:episode/:category
+    navigate(`/watch/${newProvider}/${id}/${targetEpNum}/${activeAudio}`);
   };
 
+  // 3. Handles switching audio streams without dropping the active navigation indices
   const handleAudioRedirect = (newAudio) => {
-    const targetAudioDeck =
-      episodeData?.providers?.[activeProvider]?.episodes?.[newAudio] || [];
-    const matchingNewEp =
-      targetAudioDeck.find((ep) => ep.number === currentEpNumber) ||
-      targetAudioDeck[0];
+    // Find matching episode token under the same provider layout context
+    const currentProviderObj = Array.isArray(episodeData)
+      ? episodeData.find(
+          (item) => item.provider === activeProvider && item.success,
+        )
+      : null;
 
-    if (matchingNewEp) {
-      const newSlugToken =
-        matchingNewEp.id?.split("/").pop() || matchingNewEp.number.toString();
-      navigate(`/watch/${activeProvider}/${id}/${newAudio}/${newSlugToken}`);
-    }
+    const targetDeck = currentProviderObj?.data?.episodes || [];
+    const matchingNewEp =
+      targetDeck.find((ep) => (ep.number ?? ep.num) === currentEpNumber) ||
+      targetDeck[0];
+
+    const targetEpNum = matchingNewEp
+      ? (matchingNewEp.number ?? matchingNewEp.num)
+      : currentEpNumber;
+
+    // Preserves ongoing provider context track parameters safely
+    navigate(`/watch/${activeProvider}/${id}/${targetEpNum}/${newAudio}`);
   };
 
-  const workingProviders = ["bonk", "bee", "pewe"];
-
-  // Isolate strictly the 100 cards for the currently selected range chunk safely
+  // 4. Fallback reference sync to prevent index boundary render crashes
   const paginatedEpisodeList = episodeChunks[activeChunkIndex] || [];
+
   return (
     /* 
       Exclusively visible on laptop/desktop monitor viewports (lg:flex).
@@ -89,15 +95,19 @@ export const DesktopPlaylistSidebar = ({
               onChange={(e) => handleSourceRedirect(e.target.value)}
               className="bg-transparent w-full text-white outline-none cursor-pointer uppercase text-[11px]"
             >
-              {Object.entries(episodeData?.providers)
-                .filter(([key]) => workingProviders.includes(key))
-                .map(([pKey]) => {
-                  return (
-                    <option key={pKey} value={pKey} className="bg-[#0a0a0a]">
-                      Src: {pKey}
+              {/* Safeguard checking for array payloads and filtering out failed tracks natively */}
+              {Array.isArray(episodeData) &&
+                episodeData
+                  .filter((item) => item.success)
+                  .map((item) => (
+                    <option
+                      key={item.provider}
+                      value={item.provider}
+                      className="bg-[#0a0a0a]"
+                    >
+                      Src: {item.provider}
                     </option>
-                  );
-                })}
+                  ))}
             </select>
           </div>
 
@@ -118,69 +128,94 @@ export const DesktopPlaylistSidebar = ({
           </div>
         </div>
 
+        {/* Chunk Segments Header Row Tracker */}
         {episodeChunks.length > 1 && (
           <div className="flex flex-col gap-1.5 mt-2 border-t border-white/5 pt-3">
             <span className="text-[10px] text-[#a1a1a1] font-bold uppercase tracking-wider flex items-center gap-1">
               <SlidersHorizontal size={11} /> Range Select:
             </span>
             <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pr-1">
-              {episodeChunks.map((_, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => setActiveChunkIndex(index)}
-                  className={`px-2 py-1 cursor-pointer rounded text-[11px] font-bold transition-all ${index === activeChunkIndex ? "bg-white text-black" : "bg-white/5 border border-white/5 text-white/60 hover:text-white hover:bg-white/10"}`}
-                >
-                  {index * 100 + 1}-
-                  {Math.min((index + 1) * 100, totalEpisodeList.length)}
-                </button>
-              ))}
+              {episodeChunks.map((_, index) => {
+                const startEP = index * 50 + 1; // Updated step calculations to match new 50-chunk criteria
+                const endEP = Math.min(
+                  (index + 1) * 50,
+                  totalEpisodeList.length,
+                );
+                return (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => setActiveChunkIndex(index)}
+                    className={`px-2 py-1 cursor-pointer rounded text-[11px] font-bold transition-all ${
+                      index === activeChunkIndex
+                        ? "bg-white text-black"
+                        : "bg-white/5 border border-white/5 text-white/60 hover:text-white hover:bg-white/10"
+                    }`}
+                  >
+                    {startEP}-{endEP}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
       </div>
 
       {/* SCROLLING EPISODES PLAYLIST SLOT TRACK */}
-      {/* RENDER CHUNK LIST GRID ONLY */}
-      <div className="flex flex-col gap-2.5 overflow-y-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pr-1">
+      {/* RENDER DENSE TEXT-ONLY GRID ONLY */}
+      <div className="overflow-y-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pr-1">
         {paginatedEpisodeList.length === 0 ? (
           <div className="text-center text-white/30 text-[13px] py-12">
             <p>No episodes matched this source channel.</p>
           </div>
         ) : (
-          paginatedEpisodeList.map((ep) => {
-            const epSlugToken =
-              ep.id?.split("/")?.pop() || ep.number.toString();
-            const isSelected = slug === epSlugToken;
+          /* Uses grid layout rules tailored cleanly for a sidebar component layout */
+          <div className="grid grid-cols-2 gap-2">
+            {paginatedEpisodeList.map((ep) => {
+              const episodeNum = ep.number ?? ep.num;
+              const uniqueId = ep.id || `${activeProvider}-${episodeNum}`;
 
-            return (
-              <Link
-                key={ep.number || ep.id}
-                to={`/watch/${activeProvider}/${id}/${activeAudio}/${epSlugToken}`}
-                className={`flex items-center gap-3 p-2 rounded-xl border transition-all duration-300 group ${isSelected ? "bg-(--primary-color) border-(--primary-color) text-white font-bold" : "bg-black/10 border-white/0 hover:border-white/5 hover:bg-white/5"}`}
-              >
-                <div className="w-20 aspect-video rounded-md overflow-hidden relative shrink-0 bg-neutral-900 shadow-sm">
-                  {ep.image ? (
-                    <SmoothImage src={ep.image} alt="" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-white/20">
-                      <ImageIcon size={14} />
+              // Match matching active parameter track configurations cleanly via absolute numerical matches
+              const isSelected = parseInt(episode, 10) === episodeNum;
+
+              return (
+                <Link
+                  key={uniqueId}
+                  to={`/watch/${activeProvider}/${id}/${episodeNum}/${activeAudio}`}
+                  className={`flex flex-col justify-center p-2.5 rounded-xl border text-left transition-all duration-200 group relative ${
+                    isSelected
+                      ? "bg-(--primary-color) border-(--primary-color) text-white font-bold"
+                      : "bg-black/20 border-white/5 hover:border-white/20 hover:bg-white/5"
+                  }`}
+                >
+                  {/* Subtle hover play accent indicator icon layer */}
+                  {!isSelected && (
+                    <div className="absolute top-2 right-2 text-(--brand-color) opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                      <Play size={10} fill="currentColor" />
                     </div>
                   )}
-                </div>
-                <div className="flex flex-col min-w-0 font-[Inter] leading-tight">
-                  <span className="text-[13px]">Episode {ep.number}</span>
-                  {ep.title && (
-                    <span
-                      className={`text-[11px] truncate max-w-[130px] mt-0.5 ${isSelected ? "text-white/70" : "text-white/40"}`}
-                    >
-                      {ep.title}
-                    </span>
-                  )}
-                </div>
-              </Link>
-            );
-          })
+
+                  <span
+                    className={`text-[13px] tracking-wide font-extrabold ${isSelected ? "text-white" : "text-white/90"}`}
+                  >
+                    EP {episodeNum}
+                  </span>
+
+                  <span
+                    className={`text-[11px] truncate max-w-full mt-0.5 font-[Inter] ${
+                      isSelected
+                        ? "text-white/80 font-medium"
+                        : "text-[#a1a1a1] group-hover:text-white"
+                    }`}
+                  >
+                    {ep.title && ep.title !== `Episode ${episodeNum}`
+                      ? ep.title
+                      : "Watch Now"}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>

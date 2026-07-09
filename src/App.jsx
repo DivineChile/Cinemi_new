@@ -40,7 +40,7 @@ const router = createBrowserRouter([
         element: <Stream />,
       },
       {
-        path: "watch/:provider/:id/:category/:slug",
+        path: "watch/:provider/:id/:episode/:category",
         element: <Stream />,
       },
     ],

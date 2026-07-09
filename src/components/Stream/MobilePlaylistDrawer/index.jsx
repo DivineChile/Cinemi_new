@@ -17,7 +17,7 @@ export const MobilePlaylistDrawer = ({
   activeChunkIndex,
   setActiveChunkIndex,
   id,
-  slug,
+  episode,
   activeProvider,
   activeAudio,
 }) => {
@@ -26,50 +26,56 @@ export const MobilePlaylistDrawer = ({
   // Guard clause: Return nothing if the drawer state is closed to keep DOM light
   if (!isOpen) return null;
 
-  // Find out what integer episode index number we are currently sitting on
-  const currentEpNumber =
-    totalEpisodeList.find((ep) => {
-      const token = ep.id?.split("/").pop() || ep.number.toString();
-      return slug === token;
-    })?.number || 1;
+  // 1. Cast the active string identifier to an absolute integer safely
+  const currentEpNumber = parseInt(episode, 10) || 1;
 
-  // 🌟 SYNCED SOURCE REDIRECT: Changes provider AND calculates the correct matching episode slug
+  // 2. SYNCED SOURCE REDIRECT: Changes provider while cleanly preserving the episode number context
   const handleSourceRedirect = (newProvider) => {
-    const targetProviderDeck =
-      episodeData?.providers?.[newProvider]?.episodes?.[activeAudio] || [];
+    const targetProviderObj = Array.isArray(episodeData)
+      ? episodeData.find(
+          (item) => item.provider === newProvider && item.success,
+        )
+      : null;
 
-    // Find the matching episode object inside the newly selected provider's deck
+    const targetProviderDeck = targetProviderObj?.data?.episodes || [];
+
+    // Map exact or fallback number matches matching structural properties (number vs num)
     const matchingNewEp =
-      targetProviderDeck.find((ep) => ep.number === currentEpNumber) ||
-      targetProviderDeck[0];
+      targetProviderDeck.find(
+        (ep) => (ep.number ?? ep.num) === currentEpNumber,
+      ) || targetProviderDeck[0];
 
-    if (matchingNewEp) {
-      const newSlugToken =
-        matchingNewEp.id?.split("/").pop() || matchingNewEp.number.toString();
-      navigate(`/watch/${newProvider}/${id}/${activeAudio}/${newSlugToken}`);
-    } else {
-      navigate(`/watch/${newProvider}/${id}/${activeAudio}/1`);
-    }
+    const targetEpNum = matchingNewEp
+      ? (matchingNewEp.number ?? matchingNewEp.num)
+      : 1;
+
+    // Direct routing format path constraints: /watch/:provider/:id/:episode/:category
+    navigate(`/watch/${newProvider}/${id}/${targetEpNum}/${activeAudio}`);
   };
 
-  // 🌟 SYNCED AUDIO REDIRECT: Changes audio track AND updates the matching episode slug
+  // 3. SYNCED AUDIO REDIRECT: Changes audio track without dropping ongoing provider context parameters
   const handleAudioRedirect = (newAudio) => {
-    const targetAudioDeck =
-      episodeData?.providers?.[activeProvider]?.episodes?.[newAudio] || [];
-    const matchingNewEp =
-      targetAudioDeck.find((ep) => ep.number === currentEpNumber) ||
-      targetAudioDeck[0];
+    const currentProviderObj = Array.isArray(episodeData)
+      ? episodeData.find(
+          (item) => item.provider === activeProvider && item.success,
+        )
+      : null;
 
-    if (matchingNewEp) {
-      const newSlugToken =
-        matchingNewEp.id?.split("/").pop() || matchingNewEp.number.toString();
-      navigate(`/watch/${activeProvider}/${id}/${newAudio}/${newSlugToken}`);
-    }
+    const targetDeck = currentProviderObj?.data?.episodes || [];
+    const matchingNewEp =
+      targetDeck.find((ep) => (ep.number ?? ep.num) === currentEpNumber) ||
+      targetDeck[0];
+
+    const targetEpNum = matchingNewEp
+      ? (matchingNewEp.number ?? matchingNewEp.num)
+      : currentEpNumber;
+
+    navigate(`/watch/${activeProvider}/${id}/${targetEpNum}/${newAudio}`);
   };
 
-  const workingProviders = ["bonk", "bee", "pewe"];
-
+  // 4. Fallback reference sync to prevent index boundary render crashes
   const paginatedEpisodeList = episodeChunks[activeChunkIndex] || [];
+
   return (
     /* 
       🌟 FIX: Outer parent wrapper container layer stays fully interactive instantly.
@@ -84,7 +90,7 @@ export const MobilePlaylistDrawer = ({
     >
       {/* 1. Backdrop Scrim Layer: Seamlessly fades out alpha levels alongside the parent container */}
       <div
-        className={`absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-500 cubic-bezier(0.16,1,0.3,1) ${
+        className={`absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-500 ease-out ${
           isOpen ? "opacity-100" : "opacity-0"
         }`}
         onClick={() => setIsOpen(false)}
@@ -92,7 +98,7 @@ export const MobilePlaylistDrawer = ({
 
       {/* 2. Sliding Content Tray Container: Executes a hardware-accelerated slide-down transition */}
       <div
-        className={`w-full bg-[#0c0c0c] border-t border-white/10 rounded-t-3xl max-h-[70vh] flex flex-col relative z-50 transition-transform duration-500 transform ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        className={`w-full bg-[#0c0c0c] border-t border-white/10 rounded-t-3xl max-h-[70vh] flex flex-col relative z-50 transition-transform duration-500 transform ease-out ${
           isOpen ? "translate-y-0" : "translate-y-full"
         }`}
       >
@@ -123,13 +129,19 @@ export const MobilePlaylistDrawer = ({
             onChange={(e) => handleSourceRedirect(e.target.value)}
             className="w-1/2 bg-[#121212] border border-white/10 rounded-lg p-2.5 uppercase text-white outline-none cursor-pointer"
           >
-            {Object.entries(episodeData?.providers || {})
-              .filter(([key]) => workingProviders?.includes(key))
-              .map(([pKey]) => (
-                <option key={pKey} value={pKey} className="bg-[#0a0a0a]">
-                  Src: {pKey}
-                </option>
-              ))}
+            {/* Safeguard checking for array payloads and filtering out failed tracks natively */}
+            {Array.isArray(episodeData) &&
+              episodeData
+                .filter((item) => item.success)
+                .map((item) => (
+                  <option
+                    key={item.provider}
+                    value={item.provider}
+                    className="bg-[#0a0a0a]"
+                  >
+                    Src: {item.provider}
+                  </option>
+                ))}
           </select>
           <select
             value={activeAudio}
@@ -151,71 +163,80 @@ export const MobilePlaylistDrawer = ({
               <SlidersHorizontal size={11} /> Range:
             </span>
             <div className="flex gap-1.5">
-              {episodeChunks.map((_, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => setActiveChunkIndex(index)}
-                  className={`px-3 py-1.5 cursor-pointer rounded-lg text-[11px] font-bold tracking-wide shrink-0 transition-all ${
-                    index === activeChunkIndex
-                      ? "bg-white text-black"
-                      : "bg-white/5 border border-white/5 text-white/60 hover:text-white"
-                  }`}
-                >
-                  {index * 100 + 1} -{" "}
-                  {Math.min((index + 1) * 100, totalEpisodeList.length)}
-                </button>
-              ))}
+              {episodeChunks.map((_, index) => {
+                const startEP = index * 50 + 1; // Updated step calculations to match 50-chunk criteria
+                const endEP = Math.min(
+                  (index + 1) * 50,
+                  totalEpisodeList.length,
+                );
+                return (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => setActiveChunkIndex(index)}
+                    className={`px-3 py-1.5 cursor-pointer rounded-lg text-[11px] font-bold tracking-wide shrink-0 transition-all ${
+                      index === activeChunkIndex
+                        ? "bg-white text-black"
+                        : "bg-white/5 border border-white/5 text-white/60 hover:text-white"
+                    }`}
+                  >
+                    {startEP} - {endEP}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
 
         {/* Dynamic Playlist List Grid */}
-        <div className="p-4 overflow-y-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden flex flex-col gap-2.5 bg-[#0a0a0a]">
+        <div className="p-4 overflow-y-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden bg-[#0a0a0a] flex-1">
           {paginatedEpisodeList?.length === 0 ? (
             <div className="text-center text-white/30 text-[13px] py-12 flex flex-col items-center gap-2">
               <AlertCircle size={20} className="opacity-50" />
               <p>No episodes matched this settings channel.</p>
             </div>
           ) : (
-            paginatedEpisodeList.map((ep) => {
-              const epSlugToken =
-                ep.id?.split("/")?.pop() || ep.number.toString();
-              const isSelected = slug === epSlugToken;
+            /* Implements an efficient 2-column small screen button matrix */
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {paginatedEpisodeList.map((ep) => {
+                const episodeNum = ep.number ?? ep.num;
+                const uniqueId = ep.id || `${activeProvider}-${episodeNum}`;
 
-              return (
-                <Link
-                  key={ep.number || ep.id}
-                  to={`/watch/${activeProvider}/${id}/${activeAudio}/${epSlugToken}`}
-                  onClick={() => setIsOpen(false)}
-                  className={`flex items-center gap-3.5 p-2.5 rounded-xl border transition-all duration-300 ${
-                    isSelected
-                      ? "bg-(--primary-color) border-(--primary-color) text-white font-bold shadow-lg shadow-red-950/20"
-                      : "bg-white/5 border-transparent text-white/80 hover:bg-white/10"
-                  }`}
-                >
-                  <div className="w-16 aspect-video rounded-md overflow-hidden bg-neutral-900 relative shrink-0">
-                    {ep.image ? (
-                      <SmoothImage src={ep.image} alt="" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-white/20">
-                        <ImageIcon size={12} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col min-w-0 text-[13px] leading-tight">
-                    <span className="font-bold">Episode {ep.number}</span>
-                    {ep.title && (
-                      <span
-                        className={`text-[11px] truncate max-w-[180px] mt-0.5 ${isSelected ? "text-white/70" : "text-white/40"}`}
-                      >
-                        {ep.title}
-                      </span>
-                    )}
-                  </div>
-                </Link>
-              );
-            })
+                // Match active link paths reliably via direct integer casting comparisons
+                const isSelected = parseInt(episode, 10) === episodeNum;
+
+                return (
+                  <Link
+                    key={uniqueId}
+                    to={`/watch/${activeProvider}/${id}/${episodeNum}/${activeAudio}`}
+                    onClick={() => setIsOpen(false)}
+                    className={`flex flex-col justify-center p-3 rounded-xl border text-left transition-all duration-200 group relative ${
+                      isSelected
+                        ? "bg-(--primary-color) border-(--primary-color) text-white font-bold shadow-lg shadow-red-950/20"
+                        : "bg-white/5 border-white/5 text-white/80 hover:bg-white/10"
+                    }`}
+                  >
+                    <span
+                      className={`text-[13px] tracking-wide font-extrabold ${isSelected ? "text-white" : "text-white/90"}`}
+                    >
+                      EP {episodeNum}
+                    </span>
+
+                    <span
+                      className={`text-[11px] truncate max-w-full mt-0.5 font-[Inter] ${
+                        isSelected
+                          ? "text-white/80 font-medium"
+                          : "text-[#a1a1a1] group-hover:text-white"
+                      }`}
+                    >
+                      {ep.title && ep.title !== `Episode ${episodeNum}`
+                        ? ep.title
+                        : "Watch Now"}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>

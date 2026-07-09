@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 
 const PROXY_API_URL = import.meta.env.VITE_PROXY_API_URL;
-const EPISODES_PER_PAGE = 100; // Define chunk sizes (100 is standard)
+const PROXY_API_URL_V2 = import.meta.env.VITE_PROXY_API_URL_V2;
+const EPISODES_PER_PAGE = 50; // Define chunk sizes (100 is standard)
 
 export const AnimeEpisodes = () => {
   const { animeId } = useParams(); // AniList ID from route url
@@ -27,7 +28,8 @@ export const AnimeEpisodes = () => {
   const [activeChunkIndex, setActiveChunkIndex] = useState(0);
   const [isCollapsed, setIsCollapsed] = useState(window.innerWidth < 768);
 
-  const workingProviders = ["bonk", "bee", "pewe"];
+  const miruroWorkingProviders = ["bonk", "bee", "pewe"];
+  const anivaultWorkingProviders = ["senshi", "animeheaven", "anikoto"];
 
   // Fetch episodes dataset matching your 3-Step Streaming Flow
   useEffect(() => {
@@ -35,27 +37,74 @@ export const AnimeEpisodes = () => {
       try {
         setLoading(true);
         setError(null);
+        console.log("Fetching Episodes for:", animeId);
 
-        const response = await fetch(`${PROXY_API_URL}/episodes/${animeId}`);
-        if (!response.ok)
-          throw new Error("Failed to load episodes tracking matrix");
-        const data = await response.json();
-
-        setEpisodeData(data);
-
-        // Auto-select the first available provider from the API response payload object map
-        const availableProviders = Object.keys(data.providers || {});
-        const realProviders = availableProviders.filter(
-          (provider) => provider !== "kiwi" && provider !== "hop",
+        // 1. Dynamically create promises for all providers in parallel
+        const fetchPromises = anivaultWorkingProviders.map((provider) =>
+          fetch(
+            `${PROXY_API_URL_V2}/api/episodes?anilistId=${animeId}&source=${provider}`,
+          ),
         );
 
-        if (realProviders.length > 0) {
-          // Default to 'kiwi' if available, otherwise grab the first one
-          if (realProviders.includes("bee")) {
-            setActiveProvider("bee");
+        // 2. Await the initial network responses safely
+        const fetchResults = await Promise.allSettled(fetchPromises);
+
+        // 3. Map fulfilled responses to their respective JSON parsing promises
+        const jsonPromises = fetchResults.map(async (result, index) => {
+          const providerName = anivaultWorkingProviders[index];
+
+          if (result.status === "fulfilled" && result.value.ok) {
+            try {
+              const payload = await result.value.json();
+              // Return structured object mapping provider name to data
+              return { provider: providerName, data: payload, success: true };
+            } catch (jsonErr) {
+              console.error(
+                `Failed parsing JSON for ${providerName}:`,
+                jsonErr,
+              );
+              return {
+                provider: providerName,
+                error: "Malformed JSON",
+                success: false,
+              };
+            }
+          } else {
+            console.warn(
+              `Network request failed for provider: ${providerName}`,
+            );
+            return {
+              provider: providerName,
+              error: result.reason?.message || "Network Error",
+              success: false,
+            };
+          }
+        });
+
+        // 4. Resolve all JSON parsing operations in parallel
+        const parsedResults = await Promise.all(jsonPromises);
+
+        // 5. Update your state with the final array of objects
+        setEpisodeData(parsedResults);
+        console.log(parsedResults);
+
+        // 6. Auto-select logic using your newly mapped array
+        const successfulFetches = parsedResults.filter((item) => item.success);
+
+        if (successfulFetches.length > 0) {
+          // Build an array of successfully resolved provider names
+          const realProviders = successfulFetches.map((item) => item.provider);
+          console.log(realProviders);
+
+          // Your original matching conditional logic applied to active states
+          if (realProviders.includes("senshi")) {
+            // Swapped 'bee' example context with your working list
+            setActiveProvider("senshi");
           } else {
             setActiveProvider(realProviders[0]);
           }
+        } else {
+          throw new Error("All provider requests failed.");
         }
       } catch (err) {
         console.error(err);
@@ -73,16 +122,22 @@ export const AnimeEpisodes = () => {
     setActiveChunkIndex(0);
   }, [activeAudio, activeProvider]);
 
-  // 🌟 FIX: Combined structural extraction and slicing into a single dependency-safe memo block
+  // 🌟 FIX: Updated structural extraction matching your new parallel response schema
   const { totalEpisodeList, episodeChunks } = useMemo(() => {
-    // Isolate active array references safely without creating fresh fallback reference objects inline
-    const providerData = episodeData?.providers?.[activeProvider];
-    const rawList = providerData?.episodes?.[activeAudio];
+    // 1. Locate the dynamic object matching the active selection
+    const activeProviderObj = Array.isArray(episodeData)
+      ? episodeData.find(
+          (item) => item.provider === activeProvider && item.success,
+        )
+      : null;
 
-    // Safely enforce array formatting constraint variables
+    // 2. Extract the flat episodes array safely
+    const rawList = activeProviderObj?.data?.episodes;
+
+    // 3. Safely enforce array formatting constraint variables
     const verifiedList = Array.isArray(rawList) ? rawList : [];
 
-    // Compute the 100-item segmented grid array tracks
+    // 4. Compute the 50-item segmented grid array tracks (EPISODES_PER_PAGE = 50)
     const chunks = [];
     for (let i = 0; i < verifiedList.length; i += EPISODES_PER_PAGE) {
       chunks.push(verifiedList.slice(i, i + EPISODES_PER_PAGE));
@@ -92,9 +147,9 @@ export const AnimeEpisodes = () => {
       totalEpisodeList: verifiedList,
       episodeChunks: chunks,
     };
-  }, [episodeData, activeProvider, activeAudio]); // 🚀 Only runs when these specific state values change!
+  }, [episodeData, activeProvider]); // 🚀 Re-calculates if the fresh API payloads or active source change
 
-  // Isolate strictly the 100 cards for the currently selected range chunk safely
+  // Isolate strictly the 50 cards for the currently selected range chunk safely
   const paginatedEpisodeList = episodeChunks[activeChunkIndex] || [];
 
   // 1. Structural Skeleton Loading Track State
@@ -203,6 +258,7 @@ export const AnimeEpisodes = () => {
 
             {/* Providers and Audio Switch Filters */}
             <div className="flex flex-col md:flex-row items-center gap-3 font-[Inter] text-[13px] w-full md:w-auto justify-end">
+              {/* Provider Select Dropdown */}
               <div className="flex items-center w-full md:w-fit gap-1.5 bg-white/5 border border-white/10 rounded-lg px-3 py-3 md:py-1.5 cursor-pointer">
                 <Layers size={14} className="text-white/60" />
                 <select
@@ -210,20 +266,23 @@ export const AnimeEpisodes = () => {
                   onChange={(e) => setActiveProvider(e.target.value)}
                   className="bg-transparent w-full md:w-fit text-white font-semibold outline-none cursor-pointer pr-1"
                 >
-                  {Object.entries(episodeData?.providers).filter(([key]) => workingProviders.includes(key)).map(([key]) => {
-                    return (
-                      <option
-                        key={key}
-                        value={key}
-                        className="bg-[#0a0a0a] text-white uppercase text-[12px]"
-                      >
-                        Source: {key}
-                      </option>
-                    );
-                  })}
+                  {/* Safeguard using Array.isArray and filtering only successful parallel responses */}
+                  {Array.isArray(episodeData) &&
+                    episodeData
+                      .filter((item) => item.success)
+                      .map((item) => (
+                        <option
+                          key={item.provider}
+                          value={item.provider}
+                          className="bg-[#0a0a0a] text-white uppercase text-[12px]"
+                        >
+                          Source: {item.provider}
+                        </option>
+                      ))}
                 </select>
               </div>
 
+              {/* Audio Sub/Dub Selector */}
               <div className="flex w-full md:w-fit bg-black/40 border border-white/5 p-1 rounded-lg">
                 <button
                   type="button"
@@ -252,7 +311,7 @@ export const AnimeEpisodes = () => {
           </div>
 
           {totalEpisodeList.length === 0 ? (
-            // Localized fallback banner keeps the dropdown controls fully clickable above it
+            /* Localized fallback banner keeps the dropdown controls fully clickable above it */
             <div className="w-full bg-white/5 border border-white/10 rounded-2xl p-12 flex flex-col items-center justify-center gap-3 text-center font-[Inter]">
               <AlertCircle size={36} className="text-white/40" />
               <div className="flex flex-col gap-1">
@@ -273,75 +332,45 @@ export const AnimeEpisodes = () => {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
               {paginatedEpisodeList.map((ep) => {
-                // Encode the parameters securely to match Step 2 streaming endpoint constraints safely
-                // Format path variable: /watch/:provider/:anilistId/:category/:slug
-                // ep.id typically holds a path string like "watch/kiwi/178005/sub/animepahe-1"
-                const watchPath = `/${ep.id || `watch/${activeProvider}/${animeId}/${activeAudio}/${ep.number}`}`;
+                // 1. Unify varying API key references (falls back to .num based on your response sample)
+                const episodeNum = ep.number ?? ep.num;
+                const uniqueId = ep.id || `${activeProvider}-${episodeNum}`;
+
+                // 2. Build your custom structural path variables string dynamically
+                const watchPath = `/watch/${activeProvider}/${animeId}/${episodeNum}/${activeAudio}`;
 
                 return (
                   <Link
-                    key={ep.number || ep.id}
+                    key={uniqueId}
                     to={watchPath}
-                    className="group flex flex-col gap-2.5 bg-white/0 hover:bg-white/5 border border-transparent hover:border-white/5 p-2 rounded-xl transition-all duration-300"
+                    className="group relative flex flex-col justify-center p-3 rounded-xl bg-white/5 border border-white/10 hover:border-(--brand-color) hover:bg-white/10 transition-all duration-200 shadow-sm"
                   >
-                    {/* Image Frame aspect locked preview box box */}
-                    <div className="w-full aspect-video bg-gray-900 rounded-lg overflow-hidden relative shadow-md">
-                      {ep.image ? (
-                        <img
-                          src={ep.image}
-                          alt=""
-                          loading="lazy"
-                          className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-105"
-                        />
-                      ) : (
-                        // Default fallback node graphic icon element if API skips preview image paths
-                        <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-white/20">
-                          <ImageIcon size={24} />
-                          <span className="text-[11px] font-[Inter]">
-                            No Preview
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Absolute Card Duration Tag and Hover Play Circle Layer */}
-                      {ep.duration && (
-                        <span className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm text-white/90 text-[11px] font-bold px-2 py-0.5 rounded font-[Inter]">
-                          {Math.floor(ep.duration / 60)}m
-                        </span>
-                      )}
-
-                      {/* Hover Video Dim Backdrop Reveal layer */}
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300">
-                        <div className="w-10 h-10 rounded-full bg-(--primary-color) text-white flex items-center justify-center scale-90 group-hover:scale-100 transition-transform duration-300 shadow-lg">
-                          <Play
-                            size={16}
-                            fill="currentColor"
-                            className="ml-0.5"
-                          />
-                        </div>
-                      </div>
+                    {/* Floating Play Indicator Icon on Hover */}
+                    <div className="absolute top-3 right-3 text-(--brand-color) opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <Play size={12} fill="currentColor" />
                     </div>
 
-                    {/* Text Metadata descriptions tags row */}
-                    <div className="px-1 flex flex-col gap-0.5">
-                      <h4 className="text-[14px] font-bold text-white font-[Inter] flex items-center gap-2">
-                        <span className="text-(--brand-color)">
-                          EP {ep.number}
+                    {/* Top Data Layer: Episode Badge Number + Filler Status */}
+                    <div className="flex items-center gap-2 mb-0.5 max-w-[85%]">
+                      <span className="text-[14px] font-extrabold text-white font-[Inter] tracking-wide">
+                        EP {episodeNum}
+                      </span>
+
+                      {ep.filler && (
+                        <span className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[9px] uppercase px-1.5 py-0.5 rounded font-semibold tracking-wider font-[Inter]">
+                          Filler
                         </span>
-                        {ep.filler && (
-                          <span className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] uppercase px-1.5 py-0.2 rounded font-semibold tracking-wider font-[Inter]">
-                            Filler
-                          </span>
-                        )}
-                      </h4>
-                      {ep.title && (
-                        <p className="text-[13px] text-[#a1a1a1] group-hover:text-white transition-colors font-[Inter] truncate max-w-full">
-                          {ep.title}
-                        </p>
                       )}
                     </div>
+
+                    {/* Bottom Data Layer: Context Title fallback */}
+                    <p className="text-[12px] text-[#a1a1a1] group-hover:text-white transition-colors font-[Inter] truncate max-w-full">
+                      {ep.title && ep.title !== `Episode ${episodeNum}`
+                        ? ep.title
+                        : "Watch Now"}
+                    </p>
                   </Link>
                 );
               })}

@@ -10,22 +10,30 @@ import { CarouselRow } from "../../components/ui/CarouselRow";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
 function Stream() {
-  const PROXY_API_URL = import.meta.env.VITE_PROXY_API_URL;
-  const EPISODES_PER_PAGE = 100;
+  const PROXY_API_URL_V2 = import.meta.env.VITE_PROXY_API_URL_V2;
+  const PROXY_API_URL = import.meta.env.VITE_PROXY_API_URL; // Kept only if info/recommendations endpoint relies on V1
+  const EPISODES_PER_PAGE = 50;
+  const anivaultWorkingProviders = ["senshi", "animeheaven", "anikoto"];
 
-  const { id, provider, category, slug } = useParams();
+  // URL Parameters matching your updated path schema: /watch/:provider/:id/:episode/:category
+  const {
+    provider,
+    id: animeId,
+    episode: episodeNumStr,
+    category: audioCategory,
+  } = useParams();
   const navigate = useNavigate();
 
   // Primary Data and Media Loading States
-  const [episodeData, setEpisodeData] = useState(null);
+  const [episodeData, setEpisodeData] = useState([]);
   const [streamData, setStreamData] = useState(null);
   const [loadingLayout, setLoadingLayout] = useState(true);
   const [loadingVideo, setLoadingVideo] = useState(false);
   const [error, setError] = useState(null);
 
   // Streaming Configuration States
-  const [activeAudio, setActiveAudio] = useState(category || "sub");
-  const [activeProvider, setActiveProvider] = useState(provider || "");
+  const [activeAudio, setActiveAudio] = useState(audioCategory || "sub");
+  const [activeProvider, setActiveProvider] = useState(provider || "senshi");
   const [activeChunkIndex, setActiveChunkIndex] = useState(0);
   const [recommendations, setRecommendations] = useState([]);
 
@@ -33,51 +41,85 @@ function Stream() {
   const [isDimmed, setIsDimmed] = useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
-  const [activeEpisodeList, setActiveEpisodeList] = useState([]);
-  const [currentActiveEpisodeObj, setCurrentActiveEpisodeObj] = useState(null);
+  // Sync state tracking variables with current URL parameter actions
+  useEffect(() => {
+    if (audioCategory) setActiveAudio(audioCategory);
+    if (provider) setActiveProvider(provider);
+  }, [audioCategory, provider]);
 
-  // 🌟 STEP 1 & 2 ROUTING RESOLVER LOGIC
+  // 🌟 STEP 1: INITIALIZE PARALLEL SOURCE DATA
   useEffect(() => {
     const initializeWatchView = async () => {
       try {
         setLoadingLayout(true);
         setError(null);
+        console.log("Parallel Querying Episodes for:", animeId);
 
-        // Fetch Step 1: Episode mappings structure
-        const res = await fetch(`${PROXY_API_URL}/episodes/${id}`);
-        if (!res.ok) setError("Failed to capture streaming map references.");
-        const epPayload = await res.json();
-        setEpisodeData(epPayload);
-
-        // Detect available providers
-        const availableProviders = Object.keys(epPayload.providers || {});
-        const realProviders = availableProviders.filter(
-          (provider) => provider !== "kiwi" && provider !== "hop",
+        // 1. Fire requests to all known servers simultaneously
+        const fetchPromises = anivaultWorkingProviders.map((src) =>
+          fetch(
+            `${PROXY_API_URL_V2}/api/episodes?anilistId=${animeId}&source=${src}`,
+          ),
         );
 
-        if (realProviders.length === 0)
-          setError("No active streaming sources found.");
+        const fetchResults = await Promise.allSettled(fetchPromises);
 
-        const fallbackProvider = realProviders.includes("bee")
-          ? "bee"
-          : realProviders[0];
+        // 2. Parse responses inside concurrent loops
+        const jsonPromises = fetchResults.map(async (result, index) => {
+          const providerName = anivaultWorkingProviders[index];
+          if (result.status === "fulfilled" && result.value.ok) {
+            try {
+              const payload = await result.value.json();
+              return { provider: providerName, data: payload, success: true };
+            } catch (err) {
+              return {
+                provider: providerName,
+                error: "JSON Error",
+                success: false,
+              };
+            }
+          }
+          return {
+            provider: providerName,
+            error: "Network Error",
+            success: false,
+          };
+        });
 
-        // SCENARIO A: Routed from Home Page "Watch Now" (Missing trailing layout parameters)
-        if (!provider || !category || !slug) {
-          const firstEp =
-            epPayload.providers?.[fallbackProvider]?.episodes?.sub?.[0];
-          if (!firstEp) setError("No valid episodes found for this title.");
+        const parsedResults = await Promise.all(jsonPromises);
+        setEpisodeData(parsedResults);
 
-          // If the episode has a complete custom tracking path string, use it, else formulate it
-          const TargetRoute = firstEp.id
-            ? `/${firstEp.id}`
-            : `/watch/${fallbackProvider}/${id}/sub/${firstEp.number}`;
+        // 3. Isolate valid servers that returned full array track listings
+        const successfulFetches = parsedResults.filter((item) => item.success);
+        if (successfulFetches.length === 0) {
+          throw new Error(
+            "No active streaming sources found from any provider.",
+          );
+        }
 
-          navigate(TargetRoute, { replace: true });
+        const availableProviderNames = successfulFetches.map(
+          (item) => item.provider,
+        );
+        const fallbackProvider = availableProviderNames.includes("senshi")
+          ? "senshi"
+          : availableProviderNames[0];
+
+        // 4. ROUTING FALLBACK: User clicked "Watch Now" on details page (Missing URL tracking tokens)
+        if (!provider || !episodeNumStr || !audioCategory) {
+          const targetObj = successfulFetches.find(
+            (item) => item.provider === fallbackProvider,
+          );
+          const firstEp = targetObj?.data?.episodes?.[0];
+          const targetEpNum = firstEp ? (firstEp.number ?? firstEp.num) : 1;
+
+          // Push into predictable route path
+          navigate(
+            `/watch/${fallbackProvider}/${animeId}/${targetEpNum}/${activeAudio}`,
+            { replace: true },
+          );
           return;
         }
 
-        // SCENARIO B: Deep-linked directly (All route variables are active)
         setLoadingLayout(false);
       } catch (err) {
         console.error(err);
@@ -86,63 +128,105 @@ function Stream() {
       }
     };
 
-    if (id) initializeWatchView();
-  }, [id, provider, category, slug, navigate]);
+    if (animeId) initializeWatchView();
+  }, [animeId, provider, episodeNumStr, audioCategory, navigate]);
 
+  // Fetch Sidebar Info Recommendations
   useEffect(() => {
     const fetchBackupRecommendations = async () => {
       try {
-        const res = await fetch(`${PROXY_API_URL}/info/${id}`);
+        const res = await fetch(`${PROXY_API_URL}/info/${animeId}`);
         if (!res.ok) return;
         const infoData = await res.json();
         const recommendationsRaw =
           infoData?.recommendations?.nodes.map(
             (item) => item?.mediaRecommendation,
           ) || [];
-        setRecommendations(recommendationsRaw || []);
+        setRecommendations(recommendationsRaw);
       } catch (err) {
         console.error("Recommendations lookup failed:", err);
       }
     };
-    if (id) fetchBackupRecommendations();
-  }, [id]);
+    if (animeId) fetchBackupRecommendations();
+  }, [animeId]);
 
-  // 🌟 2. NEW LOGIC SWITCH BOARD SYSTEM: Triggers live episode switches when URL changes
+  // 🌟 STEP 2: EXTRACT CHUNKS AND LIVE DATA FROM PARALLEL PAYLOAD VIA MEMO
+  const {
+    totalEpisodeList,
+    episodeChunks,
+    currentChunkIndexFromUrl,
+    currentActiveEpisodeObj,
+  } = useMemo(() => {
+    // A. Pinpoint selected resource row data matching active selection state
+    const currentSourceObj = Array.isArray(episodeData)
+      ? episodeData.find(
+          (item) => item.provider === activeProvider && item.success,
+        )
+      : null;
+
+    const rawList = currentSourceObj?.data?.episodes;
+    const verifiedList = Array.isArray(rawList) ? rawList : [];
+
+    // B. Re-map array and chunk segment loops into sections of 50
+    const chunks = [];
+    for (let i = 0; i < verifiedList.length; i += EPISODES_PER_PAGE) {
+      chunks.push(verifiedList.slice(i, i + EPISODES_PER_PAGE));
+    }
+
+    // C. Locate object instance mirroring active URL index parameters
+    const parsedEpNum = parseInt(episodeNumStr, 10) || 1;
+    const activeObj =
+      verifiedList.find((ep) => (ep.number ?? ep.num) === parsedEpNum) || null;
+
+    // D. Compute matching active range bucket
+    const calculatedChunkIdx = Math.floor(
+      (parsedEpNum - 1) / EPISODES_PER_PAGE,
+    );
+    const validChunkIdx =
+      calculatedChunkIdx >= 0 && calculatedChunkIdx < chunks.length
+        ? calculatedChunkIdx
+        : 0;
+
+    return {
+      totalEpisodeList: verifiedList,
+      episodeChunks: chunks,
+      currentChunkIndexFromUrl: validChunkIdx,
+      currentActiveEpisodeObj: activeObj,
+    };
+  }, [episodeData, activeProvider, episodeNumStr]);
+
+  // Sync range pagination panel frame viewport on mount/update
   useEffect(() => {
-    if (!episodeData || !provider || !category || !slug) return;
+    setActiveChunkIndex(currentChunkIndexFromUrl);
+  }, [currentChunkIndexFromUrl]);
 
-    // A. Isolate the target provider's array list dynamically
-    const targetProviderDeck =
-      episodeData?.providers?.[provider]?.episodes?.[category] || [];
-    setActiveEpisodeList(targetProviderDeck);
+  // Slice visible items matching selected range index variable bounds safely
+  const paginatedEpisodeList = episodeChunks[activeChunkIndex] || [];
 
-    // B. Re-map and discover the active card object matching the new slug identifier
-    const activeObj = targetProviderDeck.find((ep) => {
-      const epSlugToken = ep.id?.split("/").pop() || ep.number.toString();
-      return slug === epSlugToken;
-    });
-    setCurrentActiveEpisodeObj(activeObj || null);
-  }, [episodeData, provider, category, slug]); // Fires immediately whenever a dropdown selection updates the parameters
-
-  // 🌟 STEP 3: OUTBOUND VIDEO LINK RETRIEVAL
+  // Reset chunk view frame if provider source toggles manually
   useEffect(() => {
-    // Only query video links if deep parameters are fully mapped and ready
-    if (!provider || !id || !category || !slug) return;
+    setActiveChunkIndex(0);
+  }, [activeProvider]);
+
+  // 🌟 STEP 3: VIDEO LINK RETRIEVAL USING THE NEW STRIPED ROUTE PATH
+  useEffect(() => {
+    if (!provider || !animeId || !episodeNumStr || !audioCategory) return;
 
     const fetchVideoStream = async () => {
       try {
         setLoadingVideo(true);
-        // Using recommended step 2/3 structured layout forwarding format
+        // Generates endpoint payload path pattern: 'api/watch/${provider}/${animeId}/${episodeNum}/${activeAudio}'
         const res = await fetch(
-          `${PROXY_API_URL}/watch/${provider}/${id}/${category}/${slug}`,
+          `${PROXY_API_URL_V2}/api/watch/${provider}/${animeId}/${episodeNumStr}/${audioCategory}`,
         );
         if (!res.ok)
-          setError("Stream player failed to query asset source link.");
+          throw new Error("Stream player failed to query asset source link.");
+
         const streamPayload = await res.json();
         setStreamData(streamPayload);
+        console.log(streamPayload);
       } catch (err) {
         console.error(err);
-        setError(err);
         setStreamData({ error: true });
       } finally {
         setLoadingVideo(false);
@@ -150,43 +234,24 @@ function Stream() {
     };
 
     fetchVideoStream();
-  }, [provider, id, category, slug]);
+  }, [provider, animeId, episodeNumStr, audioCategory]);
 
-  // Segments the active provider episode array list into blocks of 100 items each
-  const { episodeChunks, currentChunkIndexFromUrl } = useMemo(() => {
-    const chunks = [];
-    for (let i = 0; i < activeEpisodeList.length; i += EPISODES_PER_PAGE) {
-      chunks.push(activeEpisodeList.slice(i, i + EPISODES_PER_PAGE));
-    }
-
-    // Auto-discover which chunk index the user's active url episode belongs to
-    const urlEpNum = currentActiveEpisodeObj?.number || 1;
-    const calculatedChunkIdx = Math.floor((urlEpNum - 1) / EPISODES_PER_PAGE);
-    const validChunkIdx =
-      calculatedChunkIdx >= 0 && calculatedChunkIdx < chunks.length
-        ? calculatedChunkIdx
-        : 0;
-
-    return { episodeChunks: chunks, currentChunkIndexFromUrl: validChunkIdx };
-  }, [activeEpisodeList, currentActiveEpisodeObj]);
-
-  // Sync active chunk selection view frame whenever a new episode mounts
-  useEffect(() => {
-    setActiveChunkIndex(currentChunkIndexFromUrl);
-  }, [currentChunkIndexFromUrl]);
-
-  // Extract primary direct source streaming url (M3U8 / HLS player file or secure Iframe link proxy)
+  // Extract direct source streaming configurations
   const activeVideoUrl =
-    streamData?.headers?.referer || streamData?.streams?.[0]?.url || "";
+    streamData?.playbackMode == "mp4"
+      ? streamData?.mp4ProxyUrl || streamData?.streamUrl
+      : streamData?.hlsProxyUrl || streamData?.m3u8 || streamData?.embedUrl;
+  const activeSubtitles = streamData?.subtitles || [];
+  console.log(episodeData);
 
-  const activeReferer = streamData?.streams?.[0]?.referer || "";
+  const formattedEpisode =
+    !episodeNumStr || isNaN(Number(episodeNumStr))
+      ? "Active"
+      : `EP ${episodeNumStr}`;
 
-  const rawEpisodeNum = slug?.split("-")?.pop();
-  const formattedEpisode = isNaN(rawEpisodeNum)
-    ? "Active"
-    : `EP ${rawEpisodeNum}`;
-
-  useDocumentTitle(`Watching ${formattedEpisode}`);
+  useDocumentTitle(
+    `Watching ${streamData?.title} ${formattedEpisode} ${streamData?.type}`,
+  );
 
   if (loadingLayout) {
     return (
@@ -203,7 +268,7 @@ function Stream() {
           Error Loading Streams
         </p>
         <Link
-          to={`/anime/${id}`}
+          to={`/anime/${animeId}`}
           className="text-white cursor-pointer bg-white/5 border border-white/10 px-5 py-2 rounded-lg text-[13px] font-semibold font-[Inter]"
         >
           Return to Details
@@ -212,42 +277,42 @@ function Stream() {
     );
   }
 
-  const activeAnimeTitle =
-    episodeData?.mappings?.title?.english ||
-    episodeData?.mappings?.title?.romaji ||
-    episodeData?.mappings?.title ||
-    "Active Anime";
-  const activeEpisodeImg = currentActiveEpisodeObj?.image || "";
+  console.log(currentActiveEpisodeObj);
 
   return (
     <div className="bg-(--neutral-color) min-h-screen relative pb-28 overflow-hidden">
       {/* Theater Lights Dim Switch Header */}
-      <WatchHeader id={id} isDimmed={isDimmed} setIsDimmed={setIsDimmed} />
+      <WatchHeader id={animeId} isDimmed={isDimmed} setIsDimmed={setIsDimmed} />
 
       {/* Grid Layout Track Container */}
       <div className="w-full max-w-7xl mx-auto px-0 md:px-4 lg:grid lg:grid-cols-4 lg:gap-6 items-start mt-2">
         <div className="lg:col-span-3 flex flex-col gap-6 w-full">
           {/* Main Video element screen viewport block */}
+          {console.log(streamData)}
           <VideoCanvas
             videoUrl={streamData?.error ? "" : activeVideoUrl}
             loadingVideo={loadingVideo}
-            provider={provider}
-            referer={activeReferer}
-            totalEpisodeList={activeEpisodeList}
-            animeTitle={activeAnimeTitle}
-            episodeThumbnail={activeEpisodeImg}
+            provider={activeProvider}
+            referer={null}
+            totalEpisodeList={totalEpisodeList}
+            animeTitle={currentActiveEpisodeObj?.title || "Anime Stream"}
+            episodeThumbnail={
+              null
+            } /* Removed thumbnail ref since new schema omits previews */
+            subtitles={activeSubtitles}
           />
 
           {/* 🌟 FIX: Active Episode Meta now automatically hides when 'isDimmed' is active */}
           <div
             className={`px-4 md:px-0 transition-opacity duration-500 ${isDimmed ? "opacity-0 pointer-events-none" : "opacity-100"}`}
           >
+            {console.log(streamData)}
             <ActiveEpisodeMeta
-              category={category}
-              provider={provider}
-              slug={slug}
+              category={activeAudio}
+              provider={activeProvider}
+              episode={episodeNumStr}
+              animeTitle={streamData?.title}
               activeEpisodeObj={currentActiveEpisodeObj}
-              // downloadUrl={downloadLink}
             />
           </div>
         </div>
@@ -256,22 +321,22 @@ function Stream() {
         <div
           className={`transition-opacity duration-500 ${isDimmed ? "opacity-0 pointer-events-none" : "opacity-100"}`}
         >
+          {console.log(episodeChunks)}
           <DesktopPlaylistSidebar
             episodeData={episodeData}
-            totalEpisodeList={activeEpisodeList}
+            totalEpisodeList={totalEpisodeList}
             episodeChunks={episodeChunks}
             activeChunkIndex={activeChunkIndex}
             setActiveChunkIndex={setActiveChunkIndex}
-            id={id}
-            slug={slug}
-            activeProvider={provider}
-            activeAudio={category}
+            id={animeId}
+            episode={episodeNumStr}
+            activeProvider={activeProvider}
+            activeAudio={activeAudio}
           />
         </div>
       </div>
 
       {/* 🌟 ENHANCEMENT: "UP NEXT" DYNAMIC DISCOVERY RECOMMENDATIONS LANE SHELF */}
-      {/* Sits right at the bottom base line inside the layout limits to add depth to the page view */}
       {!isDimmed && recommendations.length > 0 && (
         <div className="mt-10 pb-10 mb:pb-1 opacity-90 border-t border-white/5 pt-4">
           <CarouselRow
@@ -280,7 +345,7 @@ function Stream() {
             overrideData={recommendations.slice(0, 10).map((item) => ({
               id: item.id,
               mobileHref: `/anime/${item.id}`,
-              desktopHref: `/watch/${item.id}`,
+              desktopHref: `/watch/senshi/${item.id}/1/sub` /* Safely defaults destination parameters on routing click */,
               poster: item.coverImage?.extraLarge || item.coverImage?.large,
               title:
                 item.title?.english || item.title?.romaji || item.title?.native,
@@ -305,17 +370,16 @@ function Stream() {
               Current Track
             </span>
             <span className="text-[13px] font-bold text-white truncate max-w-[170px]">
-              {currentActiveEpisodeObj?.title ||
-                `Episode ${slug?.split("-").pop()}`}
+              {currentActiveEpisodeObj?.title || `Episode ${episodeNumStr}`}
             </span>
           </div>
-          <span
+          <button
             type="button"
-            className="bg-white/5 border border-white/10 text-white/90 font-bold text-[12px] uppercase tracking-wider py-2 px-4 rounded-lg flex items-center gap-1.5"
+            className="bg-white/5 border border-white/10 text-white/90 font-bold text-[12px] uppercase tracking-wider py-2 px-4 rounded-lg flex items-center gap-1.5 cursor-pointer"
           >
-            Episodes ({activeEpisodeList.length})
-            <ChevronUp />
-          </span>
+            Episodes ({totalEpisodeList.length})
+            <ChevronUp size={16} />
+          </button>
         </div>
       )}
 
@@ -324,14 +388,14 @@ function Stream() {
         isOpen={isMobileDrawerOpen}
         setIsOpen={setIsMobileDrawerOpen}
         episodeData={episodeData}
-        totalEpisodeList={activeEpisodeList}
+        totalEpisodeList={totalEpisodeList}
         episodeChunks={episodeChunks}
         activeChunkIndex={activeChunkIndex}
         setActiveChunkIndex={setActiveChunkIndex}
-        id={id}
-        slug={slug}
-        activeProvider={provider}
-        activeAudio={category}
+        id={animeId}
+        episode={episodeNumStr}
+        activeProvider={activeProvider}
+        activeAudio={activeAudio}
       />
     </div>
   );

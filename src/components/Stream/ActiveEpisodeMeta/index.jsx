@@ -1,20 +1,28 @@
-import { AlertCircle, Calendar, Film } from "lucide-react";
+import { AlertCircle, Film } from "lucide-react";
 
 export const ActiveEpisodeMeta = ({
-  slug,
+  episode,
   provider,
+  animeTitle,
   category,
   activeEpisodeObj,
 }) => {
-  const rawEpisodeNum = slug?.split("-")?.pop();
-  const formattedEpisode = isNaN(rawEpisodeNum) ? "Active" : rawEpisodeNum;
+  // Use the directly supplied integer param fallback string seamlessly
+  const formattedEpisode = episode || "Active";
 
-  // Extract rich parameter fields safely out of the newly matched episode metadata object mapping
-  const episodeTitle = activeEpisodeObj?.title || `Episode ${formattedEpisode}`;
+  // Check if an explicit custom title exists and is not just a duplicate of the episode track string itself
+  const hasCustomTitle =
+    activeEpisodeObj?.title &&
+    activeEpisodeObj.title !== `Episode ${formattedEpisode}`;
+  const episodeTitle = hasCustomTitle
+    ? activeEpisodeObj.title
+    : `Episode ${formattedEpisode}`;
+
   const episodeDescription = activeEpisodeObj?.description
     ? activeEpisodeObj.description.replace(/<[^>]*>/g, "")
     : "No synopsis narrative is currently recorded for this individual episode track file.";
-  const airDate = activeEpisodeObj?.airDate || null;
+
+  // const airDate = activeEpisodeObj?.airDate || null;
 
   return (
     <div className="active-episode-metadata flex flex-col gap-4 font-[Inter] text-white">
@@ -24,22 +32,23 @@ export const ActiveEpisodeMeta = ({
           <span className="bg-[#b11226]/10 border border-[#b11226]/20 text-(--brand-color) text-[11px] font-extrabold uppercase font-mono px-2.5 py-0.5 rounded-md tracking-wider select-none animate-pulse">
             Now Streaming
           </span>
-          <h2 className="text-[20px] md:text-[24px] font-bold tracking-wide leading-none">
-            {episodeTitle}
+          <h2 className="text-[20px] md:text-[24px] font-bold tracking-wide line-clamp-1 leading-none">
+            {console.log(animeTitle)}
+            {animeTitle || `Anime`}
           </h2>
         </div>
 
         {/* Secondary Context Information Info line (Episode Counter + Airing Timeline details) */}
-        <div className="flex items-center gap-3 text-[13px] text-[#a1a1a1] font-medium mt-1">
-          <span className="flex items-center gap-1">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 text-[13px] text-[#a1a1a1] font-medium mt-1">
+          <span className="flex items-center gap-1 order-2 sm:order-first">
             <Film size={13} className="text-(--brand-color)" /> Episode{" "}
             {formattedEpisode}
           </span>
-          {airDate && (
+          {!parseInt(episodeTitle.split(" ").pop()) && (
             <>
-              <div className="w-1 h-1 bg-white/20 rounded-full" />
-              <span className="flex items-center gap-1">
-                <Calendar size={13} /> Released {airDate}
+              <div className="w-1 h-1 bg-white/20 rounded-full hidden sm:block" />
+              <span className="flex items-center gap-1 line-clamp-1">
+                {episodeTitle}
               </span>
             </>
           )}
