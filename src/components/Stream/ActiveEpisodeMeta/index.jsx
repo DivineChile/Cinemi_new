@@ -33,7 +33,6 @@ export const ActiveEpisodeMeta = ({
             Now Streaming
           </span>
           <h2 className="text-[20px] md:text-[24px] font-bold tracking-wide line-clamp-1 leading-none">
-            {console.log(animeTitle)}
             {animeTitle || `Anime`}
           </h2>
         </div>
@@ -66,7 +65,7 @@ export const ActiveEpisodeMeta = ({
       <div className="flex items-start gap-2 text-[13px] text-white/40 leading-normal max-w-3xl mt-2 bg-white/5 border border-white/5 p-3 rounded-xl">
         <AlertCircle size={14} className="shrink-0 mt-0.5" />
         <p>
-          You are watching via node server{" "}
+          You are watching via node provider{" "}
           <span className="text-white/70 font-bold uppercase font-mono">
             {provider}
           </span>{" "}

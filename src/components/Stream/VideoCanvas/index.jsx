@@ -10,6 +10,8 @@ export const VideoCanvas = ({
   totalEpisodeList,
   animeTitle,
   subtitles,
+  autoplayEnabled,
+  onEpisodeEnded,
 }) => {
   // 🎰 MULTI-TIER PLAYER STATE MACHINE
   const [playerTier, setPlayerTier] = useState("hls");
@@ -92,6 +94,8 @@ export const VideoCanvas = ({
           playerTier={playerTier}
           totalEpisodeList={totalEpisodeList}
           animeTitle={animeTitle}
+          autoplayEnabled={autoplayEnabled}
+          onEpisodeEnded={onEpisodeEnded}
         />
       )}
 

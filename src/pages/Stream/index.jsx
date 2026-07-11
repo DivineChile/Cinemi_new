@@ -5,7 +5,13 @@ import { VideoCanvas } from "../../components/Stream/VideoCanvas";
 import { ActiveEpisodeMeta } from "../../components/Stream/ActiveEpisodeMeta";
 import { DesktopPlaylistSidebar } from "../../components/Stream/DesktopPlaylistSidebar";
 import { MobilePlaylistDrawer } from "../../components/Stream/MobilePlaylistDrawer";
-import { ChevronUp, Layers } from "lucide-react";
+import {
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Layers,
+} from "lucide-react";
 import { CarouselRow } from "../../components/ui/CarouselRow";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
@@ -41,10 +47,17 @@ function Stream() {
   const [activeProvider, setActiveProvider] = useState(provider || "anikoto");
   const [activeChunkIndex, setActiveChunkIndex] = useState(0);
   const [recommendations, setRecommendations] = useState([]);
+  // 🌟 NEW: UI Alert state for the gatekeeper fallback notification
+  const [audioNotification, setAudioNotification] = useState("");
 
   // Cinematic and Layout Interaction States
   const [isDimmed, setIsDimmed] = useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  // 🌟 NEW: Autoplay Toggle State initialized from local storage
+  const [autoplayEnabled, setAutoplayEnabled] = useState(() => {
+    const saved = localStorage.getItem("cinemi_autoplay");
+    return saved !== null ? JSON.parse(saved) : true; // Defaults to true
+  });
 
   // Sync state tracking variables with current URL parameter actions
   useEffect(() => {
@@ -163,9 +176,16 @@ function Stream() {
           );
 
           if (audioCategory === "dub") {
-            console.log(
-              "🔄 Dub track failed. Force-switching to available sub catalog.",
+            // 🌟 FIX: Trigger visible UI alert banner notification card instead of console logging
+            setAudioNotification(
+              "Audio Dub unavailable on this source channel. Automatically switching to Sub.",
             );
+
+            // Auto-dismiss the overlay notification badge completely after 4.5 seconds
+            setTimeout(() => {
+              setAudioNotification("");
+            }, 4500);
+
             // Rewrite history route state to point cleanly into the sub layout map instead
             navigate(`/watch/${provider}/${animeId}/${episodeNumStr}/sub`, {
               replace: true,
@@ -179,13 +199,30 @@ function Stream() {
           return;
         }
 
-        setServerList(mainServerPayload);
-        // Auto-select the first structural index item in the array track list by default
+        // 🌟 FIX: Use a Map tracking keys to filter out any duplicate items safely by 'sourceId' or 'name'
+        const uniqueServersMap = new Map();
+        mainServerPayload.forEach((server) => {
+          if (server && server.name) {
+            // Normalize the name string completely to catch duplicates like "AnimeHeaven" and "animeheaven"
+            const normalizedKey = server.name.trim().toLowerCase();
 
-        const initialServerId = mainServerPayload[0]?.name.toLowerCase();
+            if (!uniqueServersMap.has(normalizedKey)) {
+              uniqueServersMap.set(normalizedKey, server);
+            }
+          }
+        });
+        const uniqueServersArray = Array.from(uniqueServersMap.values());
+
+        setServerList(uniqueServersArray);
+        console.log(Array.from(uniqueServersMap.values()));
+
+        // Auto-select the first structural index item in the array track list by default
+        // Select the first safe fallback ID string
+        const firstValidServer = uniqueServersArray[0];
+        const initialServerId = firstValidServer ? firstValidServer.name : "";
         setActiveServer((prevServer) => {
           // Look up if our previously selected active server still exists inside the new deck list
-          const serverStillExists = mainServerPayload.some(
+          const serverStillExists = uniqueServersArray.some(
             (s) => (s.sourceId || s.name) === prevServer,
           );
 
@@ -349,6 +386,43 @@ function Stream() {
     fetchVideoStream();
   }, [provider, animeId, episodeNumStr, audioCategory]);
 
+  // Persist autoplay configuration shifts to local memory instantly
+  const handleToggleAutoplay = () => {
+    setAutoplayEnabled((prev) => {
+      const newVal = !prev;
+      localStorage.setItem("cinemi_autoplay", JSON.stringify(newVal));
+      return newVal;
+    });
+  };
+
+  // Convert current episode string param to mathematical integer index context safely
+  const currentEpNum = parseInt(episodeNumStr, 10) || 1;
+
+  // Determine if a legitimate previous or next episode number track exists in our total deck
+  const hasPreviousEpisode = totalEpisodeList.some(
+    (ep) => (ep.number ?? ep.num) === currentEpNum - 1,
+  );
+  const hasNextEpisode = totalEpisodeList.some(
+    (ep) => (ep.number ?? ep.num) === currentEpNum + 1,
+  );
+
+  // Quick navigation wrappers pushing values cleanly through React Router
+  const handlePrevEpisodeClick = () => {
+    if (hasPreviousEpisode) {
+      navigate(
+        `/watch/${activeProvider}/${animeId}/${currentEpNum - 1}/${activeAudio}`,
+      );
+    }
+  };
+
+  const handleNextEpisodeClick = () => {
+    if (hasNextEpisode) {
+      navigate(
+        `/watch/${activeProvider}/${animeId}/${currentEpNum + 1}/${activeAudio}`,
+      );
+    }
+  };
+
   // Extract direct source streaming configurations
   const activeVideoUrl =
     streamData?.playbackMode == "mp4"
@@ -394,6 +468,21 @@ function Stream() {
       {/* Theater Lights Dim Switch Header */}
       <WatchHeader id={animeId} isDimmed={isDimmed} setIsDimmed={setIsDimmed} />
 
+      {/* 🌟 NEW: INTERACTIVE GATEKEEPER AUDIO DISMISSAL TOAST BADGE */}
+      {audioNotification && !isDimmed && (
+        <div className="w-full max-w-7xl mx-auto px-4 mt-3 animate-[slide-down_0.25s_ease-out] select-none font-[Inter]">
+          <div className="w-full bg-amber-500/10 border border-amber-500/20 text-amber-400 p-3.5 rounded-xl flex items-center gap-2.5 shadow-lg shadow-amber-950/10">
+            <AlertCircle
+              size={16}
+              className="shrink-0 animate-pulse text-amber-400"
+            />
+            <p className="text-[13px] font-semibold leading-snug tracking-wide">
+              {audioNotification}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Grid Layout Track Container */}
       <div className="w-full max-w-7xl mx-auto px-0 md:px-4 lg:grid lg:grid-cols-4 lg:gap-6 items-start mt-2">
         <div className="lg:col-span-3 flex flex-col gap-6 w-full">
@@ -411,12 +500,77 @@ function Stream() {
               null
             } /* Removed thumbnail ref since new schema omits previews */
             subtitles={activeSubtitles}
+            autoplayEnabled={autoplayEnabled}
+            onEpisodeEnded={handleNextEpisodeClick}
           />
 
-          {console.log("Server list", serverList)}
+          {/* 🌟 NEW: THE INTEGRATED QUICK CONTROLS BAR (AUTOPLAY + PREV/NEXT BUTTONS) */}
+          {!isDimmed && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 font-[Inter] px-4 md:px-0 select-none">
+              {/* Left Column Section: Linear Navigation Action Deck */}
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  disabled={!hasPreviousEpisode}
+                  onClick={handlePrevEpisodeClick}
+                  className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border text-[13px] font-bold transition-all duration-200 cursor-pointer shadow-sm ${
+                    hasPreviousEpisode
+                      ? "bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-white/20"
+                      : "bg-white/0 border-white/5 text-white/20 pointer-events-none"
+                  }`}
+                >
+                  <ChevronLeft size={16} /> Prev Episode
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!hasNextEpisode}
+                  onClick={handleNextEpisodeClick}
+                  className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border text-[13px] font-bold transition-all duration-200 cursor-pointer shadow-sm ${
+                    hasNextEpisode
+                      ? "bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-white/20"
+                      : "bg-white/0 border-white/5 text-white/20 pointer-events-none"
+                  }`}
+                >
+                  Next Episode <ChevronRight size={16} />
+                </button>
+              </div>
+
+              {/* Right Column Section: Persistent AutoPlay Toggle Feature pill */}
+              <div
+                onClick={handleToggleAutoplay}
+                className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-3 bg-white/5 border border-white/10 px-4 py-2 rounded-xl cursor-pointer hover:bg-white/10 transition-colors shadow-sm"
+              >
+                <div className="flex flex-col leading-tight">
+                  <span className="text-[13px] font-bold text-white tracking-wide">
+                    Autoplay Episodes
+                  </span>
+                  <span className="text-[11px] text-[#a1a1a1]">
+                    {autoplayEnabled
+                      ? "Continuous playback on"
+                      : "Will pause on completion"}
+                  </span>
+                </div>
+
+                {/* Visual Switch Indicator element box layer */}
+                <div
+                  className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-all duration-300 ${
+                    autoplayEnabled ? "bg-(--primary-color)" : "bg-white/10"
+                  }`}
+                >
+                  <div
+                    className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-300 ${
+                      autoplayEnabled ? "translate-x-4" : "translate-x-0"
+                    }`}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 🌟 NEW: THE REAL-TIME SERVER SWITCHING COMPONENT BAR (FIXED FOR OBJECTS) */}
           {!isDimmed && serverList.length > 0 && (
-            <div className="flex flex-col gap-2 font-[Inter] px-4 md:px-0 mt-4 select-none">
+            <div className="flex flex-col gap-2 font-[Inter] px-4 md:px-0 select-none">
               <span className="text-[11px] text-[#a1a1a1] uppercase font-bold tracking-wider flex items-center gap-1.5">
                 <Layers size={12} className="text-(--brand-color)" />
                 Select Server:
@@ -434,7 +588,7 @@ function Stream() {
                       onClick={() => setActiveServer(currentServerId)}
                       className={`px-3 py-1.5 rounded-lg border text-[12px] font-extrabold capitalize transition-all duration-200 cursor-pointer shadow-sm ${
                         isCurrentNode
-                          ? "bg-white text-black border-white shadow-white/5"
+                          ? "bg-(--primary-color) text-white border-none shadow-white/5"
                           : "bg-white/5 border-white/5 text-white/70 hover:border-white/20 hover:bg-white/10"
                       }`}
                     >
