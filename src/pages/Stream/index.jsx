@@ -5,7 +5,7 @@ import { VideoCanvas } from "../../components/Stream/VideoCanvas";
 import { ActiveEpisodeMeta } from "../../components/Stream/ActiveEpisodeMeta";
 import { DesktopPlaylistSidebar } from "../../components/Stream/DesktopPlaylistSidebar";
 import { MobilePlaylistDrawer } from "../../components/Stream/MobilePlaylistDrawer";
-import { ChevronUp } from "lucide-react";
+import { ChevronUp, Layers } from "lucide-react";
 import { CarouselRow } from "../../components/ui/CarouselRow";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
@@ -31,9 +31,14 @@ function Stream() {
   const [loadingVideo, setLoadingVideo] = useState(false);
   const [error, setError] = useState(null);
 
+  // 🌟 NEW SERVER CONFIGURATION STATES
+  const [serverList, setServerList] = useState([]);
+  const [activeServer, setActiveServer] = useState("");
+  const [loadingServers, setLoadingServers] = useState(false);
+
   // Streaming Configuration States
   const [activeAudio, setActiveAudio] = useState(audioCategory || "sub");
-  const [activeProvider, setActiveProvider] = useState(provider || "senshi");
+  const [activeProvider, setActiveProvider] = useState(provider || "anikoto");
   const [activeChunkIndex, setActiveChunkIndex] = useState(0);
   const [recommendations, setRecommendations] = useState([]);
 
@@ -47,7 +52,7 @@ function Stream() {
     if (provider) setActiveProvider(provider);
   }, [audioCategory, provider]);
 
-  // 🌟 STEP 1: INITIALIZE PARALLEL SOURCE DATA
+  // 🌟 PHASE 1: INITIALIZE PARALLEL SOURCE DATA
   useEffect(() => {
     const initializeWatchView = async () => {
       try {
@@ -100,8 +105,8 @@ function Stream() {
         const availableProviderNames = successfulFetches.map(
           (item) => item.provider,
         );
-        const fallbackProvider = availableProviderNames.includes("senshi")
-          ? "senshi"
+        const fallbackProvider = availableProviderNames.includes("anikoto")
+          ? "anikoto"
           : availableProviderNames[0];
 
         // 4. ROUTING FALLBACK: User clicked "Watch Now" on details page (Missing URL tracking tokens)
@@ -130,6 +135,114 @@ function Stream() {
 
     if (animeId) initializeWatchView();
   }, [animeId, provider, episodeNumStr, audioCategory, navigate]);
+
+  // 🌟 PHASE 2: NEW SERVER LIST DISCOVERY & INTERCEPTOR FALLBACK
+  useEffect(() => {
+    if (!provider || !animeId || !episodeNumStr || !audioCategory) return;
+
+    const fetchServerDeck = async () => {
+      try {
+        setLoadingServers(true);
+        // Using your dedicated micro-worker API servers path
+        const res = await fetch(
+          `${PROXY_API_URL_V2}/api/servers?anilistId=${animeId}&ep=${episodeNumStr}&type=${audioCategory}&source=${provider}`,
+        );
+
+        if (!res.ok) throw new Error("Servers endpoint failed.");
+        const serverPayload = await res.json();
+
+        const mainServerPayload = serverPayload?.servers;
+
+        // 🛡️ CRITICAL GATEKEEPER: Fallback sequence handles if payload array drops empty
+        if (
+          !Array.isArray(mainServerPayload) ||
+          mainServerPayload.length === 0
+        ) {
+          console.warn(
+            `⚠️ Zero servers found for ${provider} [${audioCategory}]. Checking fallback options...`,
+          );
+
+          if (audioCategory === "dub") {
+            console.log(
+              "🔄 Dub track failed. Force-switching to available sub catalog.",
+            );
+            // Rewrite history route state to point cleanly into the sub layout map instead
+            navigate(`/watch/${provider}/${animeId}/${episodeNumStr}/sub`, {
+              replace: true,
+            });
+            return;
+          }
+
+          // If even sub drops completely empty, flush lists out and trigger canvas fallback block
+          setServerList([]);
+          setActiveServer("");
+          return;
+        }
+
+        setServerList(mainServerPayload);
+        // Auto-select the first structural index item in the array track list by default
+
+        const initialServerId = mainServerPayload[0]?.name.toLowerCase();
+        setActiveServer((prevServer) => {
+          // Look up if our previously selected active server still exists inside the new deck list
+          const serverStillExists = mainServerPayload.some(
+            (s) => (s.sourceId || s.name) === prevServer,
+          );
+
+          // If it exists, keep it! Do not override the user's click choice.
+          if (prevServer && serverStillExists) {
+            return prevServer;
+          }
+
+          // Otherwise (on initial load or episode change), fallback safely to the first node
+          return initialServerId;
+        });
+      } catch (err) {
+        console.error("Failed to compile server list layers:", err);
+        setServerList([]);
+        setActiveServer("");
+      } finally {
+        setLoadingServers(false);
+      }
+    };
+
+    fetchServerDeck();
+  }, [provider, animeId, episodeNumStr, audioCategory, navigate]);
+
+  // 🌟 PHASE 3: FETCH LIVE VIDEO SOURCE ASSIGNING DYNAMIC SERVER KEYS
+  useEffect(() => {
+    // Only fire network requests once a specific server token is established and ready
+    if (
+      !provider ||
+      !animeId ||
+      !episodeNumStr ||
+      !audioCategory ||
+      !activeServer
+    )
+      return;
+
+    const fetchVideoStream = async () => {
+      try {
+        setLoadingVideo(true);
+        // Generates exact string query matching parameters requirement layout
+        const res = await fetch(
+          `${PROXY_API_URL_V2}/api/watch/${provider}/${animeId}/${episodeNumStr}/${audioCategory}?server=${activeServer}`,
+        );
+        if (!res.ok)
+          throw new Error("Stream asset resolver completely failed.");
+
+        const streamPayload = await res.json();
+        setStreamData(streamPayload);
+      } catch (err) {
+        console.error(err);
+        setStreamData({ error: true });
+      } finally {
+        setLoadingVideo(false);
+      }
+    };
+
+    fetchVideoStream();
+  }, [provider, animeId, episodeNumStr, audioCategory, activeServer]);
 
   // Fetch Sidebar Info Recommendations
   useEffect(() => {
@@ -242,7 +355,6 @@ function Stream() {
       ? streamData?.mp4ProxyUrl || streamData?.streamUrl
       : streamData?.hlsProxyUrl || streamData?.m3u8 || streamData?.embedUrl;
   const activeSubtitles = streamData?.subtitles || [];
-  console.log(episodeData);
 
   const formattedEpisode =
     !episodeNumStr || isNaN(Number(episodeNumStr))
@@ -277,8 +389,6 @@ function Stream() {
     );
   }
 
-  console.log(currentActiveEpisodeObj);
-
   return (
     <div className="bg-(--neutral-color) min-h-screen relative pb-28 overflow-hidden">
       {/* Theater Lights Dim Switch Header */}
@@ -288,10 +398,11 @@ function Stream() {
       <div className="w-full max-w-7xl mx-auto px-0 md:px-4 lg:grid lg:grid-cols-4 lg:gap-6 items-start mt-2">
         <div className="lg:col-span-3 flex flex-col gap-6 w-full">
           {/* Main Video element screen viewport block */}
-          {console.log(streamData)}
           <VideoCanvas
             videoUrl={streamData?.error ? "" : activeVideoUrl}
-            loadingVideo={loadingVideo}
+            loadingVideo={
+              loadingVideo || loadingServers
+            } /* Combines loading triggers for consistency */
             provider={activeProvider}
             referer={null}
             totalEpisodeList={totalEpisodeList}
@@ -302,11 +413,44 @@ function Stream() {
             subtitles={activeSubtitles}
           />
 
+          {console.log("Server list", serverList)}
+          {/* 🌟 NEW: THE REAL-TIME SERVER SWITCHING COMPONENT BAR (FIXED FOR OBJECTS) */}
+          {!isDimmed && serverList.length > 0 && (
+            <div className="flex flex-col gap-2 font-[Inter] px-4 md:px-0 mt-4 select-none">
+              <span className="text-[11px] text-[#a1a1a1] uppercase font-bold tracking-wider flex items-center gap-1.5">
+                <Layers size={12} className="text-(--brand-color)" />
+                Select Server:
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {serverList.map((server) => {
+                  // Fallback target to server.name if sourceId is missing from a specific node
+                  const currentServerId = server.name;
+                  const isCurrentNode = currentServerId === activeServer;
+
+                  return (
+                    <button
+                      key={currentServerId}
+                      type="button"
+                      onClick={() => setActiveServer(currentServerId)}
+                      className={`px-3 py-1.5 rounded-lg border text-[12px] font-extrabold capitalize transition-all duration-200 cursor-pointer shadow-sm ${
+                        isCurrentNode
+                          ? "bg-white text-black border-white shadow-white/5"
+                          : "bg-white/5 border-white/5 text-white/70 hover:border-white/20 hover:bg-white/10"
+                      }`}
+                    >
+                      {/* 🌟 FIX: Renders the simple string name property value instead of the full object */}
+                      {server.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* 🌟 FIX: Active Episode Meta now automatically hides when 'isDimmed' is active */}
           <div
             className={`px-4 md:px-0 transition-opacity duration-500 ${isDimmed ? "opacity-0 pointer-events-none" : "opacity-100"}`}
           >
-            {console.log(streamData)}
             <ActiveEpisodeMeta
               category={activeAudio}
               provider={activeProvider}
@@ -321,7 +465,6 @@ function Stream() {
         <div
           className={`transition-opacity duration-500 ${isDimmed ? "opacity-0 pointer-events-none" : "opacity-100"}`}
         >
-          {console.log(episodeChunks)}
           <DesktopPlaylistSidebar
             episodeData={episodeData}
             totalEpisodeList={totalEpisodeList}
@@ -345,7 +488,7 @@ function Stream() {
             overrideData={recommendations.slice(0, 10).map((item) => ({
               id: item.id,
               mobileHref: `/anime/${item.id}`,
-              desktopHref: `/watch/senshi/${item.id}/1/sub` /* Safely defaults destination parameters on routing click */,
+              desktopHref: `/watch/anikoto/${item.id}/1/sub` /* Safely defaults destination parameters on routing click */,
               poster: item.coverImage?.extraLarge || item.coverImage?.large,
               title:
                 item.title?.english || item.title?.romaji || item.title?.native,
