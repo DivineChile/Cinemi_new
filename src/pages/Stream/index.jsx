@@ -14,12 +14,19 @@ import {
 } from "lucide-react";
 import { CarouselRow } from "../../components/ui/CarouselRow";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
+import {
+  anime as animeApi,
+  getMediaDetail,
+  ANIME_SOURCES,
+  adaptDetail,
+  adaptEpisodeData,
+  adaptAllAnimeEpisodeSource,
+  adaptStreamData,
+} from "../../api";
 
 function Stream() {
-  const PROXY_API_URL_V2 = import.meta.env.VITE_PROXY_API_URL_V2;
-  const PROXY_API_URL = import.meta.env.VITE_PROXY_API_URL; // Kept only if info/recommendations endpoint relies on V1
   const EPISODES_PER_PAGE = 50;
-  const anivaultWorkingProviders = ["senshi", "animeheaven", "anikoto"];
+  const anivaultWorkingProviders = ANIME_SOURCES;
 
   // URL Parameters matching your updated path schema: /watch/:provider/:id/:episode/:category
   const {
@@ -47,6 +54,10 @@ function Stream() {
   const [activeProvider, setActiveProvider] = useState(provider || "anikoto");
   const [activeChunkIndex, setActiveChunkIndex] = useState(0);
   const [recommendations, setRecommendations] = useState([]);
+  // Title/type resolved from the detail endpoint — used for the stream payload
+  // and for AllAnime's title→showId lookup.
+  const [animeTitle, setAnimeTitle] = useState("");
+  const [animeType, setAnimeType] = useState("TV");
   // 🌟 NEW: UI Alert state for the gatekeeper fallback notification
   const [audioNotification, setAudioNotification] = useState("");
 
@@ -65,49 +76,43 @@ function Stream() {
     if (provider) setActiveProvider(provider);
   }, [audioCategory, provider]);
 
-  // 🌟 PHASE 1: INITIALIZE PARALLEL SOURCE DATA
+  // 🌟 PHASE 1: INITIALIZE PARALLEL SOURCE DATA (AniVault sources + AllAnime)
   useEffect(() => {
+    const controller = new AbortController();
+
     const initializeWatchView = async () => {
       try {
         setLoadingLayout(true);
         setError(null);
-        console.log("Parallel Querying Episodes for:", animeId);
 
-        // 1. Fire requests to all known servers simultaneously
-        const fetchPromises = anivaultWorkingProviders.map((src) =>
-          fetch(
-            `${PROXY_API_URL_V2}/api/episodes?anilistId=${animeId}&source=${src}`,
-          ),
-        );
+        const [anivaultResult, allanimeResult] = await Promise.allSettled([
+          animeApi.episodes(animeId, {
+            sources: ANIME_SOURCES,
+            signal: controller.signal,
+          }),
+          animeTitle
+            ? animeApi.allanimeEpisodes(animeTitle, { signal: controller.signal })
+            : Promise.resolve(null),
+        ]);
 
-        const fetchResults = await Promise.allSettled(fetchPromises);
+        const parsedResults = [];
 
-        // 2. Parse responses inside concurrent loops
-        const jsonPromises = fetchResults.map(async (result, index) => {
-          const providerName = anivaultWorkingProviders[index];
-          if (result.status === "fulfilled" && result.value.ok) {
-            try {
-              const payload = await result.value.json();
-              return { provider: providerName, data: payload, success: true };
-            } catch (err) {
-              return {
-                provider: providerName,
-                error: "JSON Error",
-                success: false,
-              };
-            }
-          }
-          return {
-            provider: providerName,
-            error: "Network Error",
-            success: false,
-          };
-        });
+        if (anivaultResult.status === "fulfilled" && anivaultResult.value) {
+          parsedResults.push(...adaptEpisodeData(anivaultResult.value));
+        }
 
-        const parsedResults = await Promise.all(jsonPromises);
+        if (allanimeResult.status === "fulfilled" && allanimeResult.value) {
+          const entry = adaptAllAnimeEpisodeSource(
+            allanimeResult.value.grouped,
+            activeAudio,
+          );
+          if (entry) parsedResults.push(entry);
+        }
+
+        if (controller.signal.aborted) return;
+
         setEpisodeData(parsedResults);
 
-        // 3. Isolate valid servers that returned full array track listings
         const successfulFetches = parsedResults.filter((item) => item.success);
         if (successfulFetches.length === 0) {
           throw new Error(
@@ -118,11 +123,11 @@ function Stream() {
         const availableProviderNames = successfulFetches.map(
           (item) => item.provider,
         );
-        const fallbackProvider = availableProviderNames.includes("anikoto")
-          ? "anikoto"
+        const fallbackProvider = availableProviderNames.includes("senshi")
+          ? "senshi"
           : availableProviderNames[0];
 
-        // 4. ROUTING FALLBACK: User clicked "Watch Now" on details page (Missing URL tracking tokens)
+        // ROUTING FALLBACK: "Watch Now" clicked without full URL tracking tokens.
         if (!provider || !episodeNumStr || !audioCategory) {
           const targetObj = successfulFetches.find(
             (item) => item.provider === fallbackProvider,
@@ -130,7 +135,6 @@ function Stream() {
           const firstEp = targetObj?.data?.episodes?.[0];
           const targetEpNum = firstEp ? (firstEp.number ?? firstEp.num) : 1;
 
-          // Push into predictable route path
           navigate(
             `/watch/${fallbackProvider}/${animeId}/${targetEpNum}/${activeAudio}`,
             { replace: true },
@@ -140,6 +144,7 @@ function Stream() {
 
         setLoadingLayout(false);
       } catch (err) {
+        if (err?.name === "AbortError" || controller.signal.aborted) return;
         console.error(err);
         setError(err.message || "Failed to load watch framework.");
         setLoadingLayout(false);
@@ -147,22 +152,41 @@ function Stream() {
     };
 
     if (animeId) initializeWatchView();
-  }, [animeId, provider, episodeNumStr, audioCategory, navigate]);
+
+    return () => controller.abort();
+  }, [
+    animeId,
+    animeTitle,
+    provider,
+    episodeNumStr,
+    audioCategory,
+    navigate,
+    activeAudio,
+  ]);
 
   // 🌟 PHASE 2: NEW SERVER LIST DISCOVERY & INTERCEPTOR FALLBACK
   useEffect(() => {
     if (!provider || !animeId || !episodeNumStr || !audioCategory) return;
 
+    // AllAnime resolves playback from inline episode streams — no server list.
+    if (provider === "allanime") {
+      setServerList([]);
+      setActiveServer("allanime");
+      return;
+    }
+
+    const controller = new AbortController();
+
     const fetchServerDeck = async () => {
       try {
         setLoadingServers(true);
-        // Using your dedicated micro-worker API servers path
-        const res = await fetch(
-          `${PROXY_API_URL_V2}/api/servers?anilistId=${animeId}&ep=${episodeNumStr}&type=${audioCategory}&source=${provider}`,
-        );
 
-        if (!res.ok) throw new Error("Servers endpoint failed.");
-        const serverPayload = await res.json();
+        const serverPayload = await animeApi.servers(animeId, {
+          episode: episodeNumStr,
+          audio: audioCategory,
+          source: provider,
+          signal: controller.signal,
+        });
 
         const mainServerPayload = serverPayload?.servers;
 
@@ -235,20 +259,24 @@ function Stream() {
           return initialServerId;
         });
       } catch (err) {
+        if (err?.name === "AbortError" || controller.signal.aborted) return;
         console.error("Failed to compile server list layers:", err);
         setServerList([]);
         setActiveServer("");
       } finally {
-        setLoadingServers(false);
+        if (!controller.signal.aborted) setLoadingServers(false);
       }
     };
 
     fetchServerDeck();
+
+    return () => controller.abort();
   }, [provider, animeId, episodeNumStr, audioCategory, navigate]);
 
   // 🌟 PHASE 3: FETCH LIVE VIDEO SOURCE ASSIGNING DYNAMIC SERVER KEYS
   useEffect(() => {
-    // Only fire network requests once a specific server token is established and ready
+    // Need core params, plus a server token for AniVault sources (AllAnime sets
+    // activeServer to "allanime" and resolves inline).
     if (
       !provider ||
       !animeId ||
@@ -258,46 +286,104 @@ function Stream() {
     )
       return;
 
+    const controller = new AbortController();
+
     const fetchVideoStream = async () => {
       try {
         setLoadingVideo(true);
-        // Generates exact string query matching parameters requirement layout
-        const res = await fetch(
-          `${PROXY_API_URL_V2}/api/watch/${provider}/${animeId}/${episodeNumStr}/${audioCategory}?server=${activeServer}`,
-        );
-        if (!res.ok)
-          throw new Error("Stream asset resolver completely failed.");
 
-        const streamPayload = await res.json();
-        setStreamData(streamPayload);
+        let providersPayload;
+
+        if (provider === "allanime") {
+          // AllAnime carries playable CDN streams inline on the episode object;
+          // resolve the show, find this episode, and use its streams.
+          const res = animeTitle
+            ? await animeApi.allanimeEpisodes(animeTitle, {
+                includeStreams: true,
+                signal: controller.signal,
+              })
+            : null;
+
+          const group = res?.grouped?.allanime;
+          const list =
+            (audioCategory === "dub" ? group?.dub : group?.sub) ?? [];
+          const epObj = list.find(
+            (e) => (e.number ?? e.num) === Number(episodeNumStr),
+          );
+
+          providersPayload = [
+            {
+              provider: "allanime",
+              sources: epObj?.streams ?? [],
+              subtitles: [],
+            },
+          ];
+        } else {
+          const data = await animeApi.streams(animeId, {
+            episode: episodeNumStr,
+            audio: audioCategory,
+            source: provider,
+            server: activeServer,
+            signal: controller.signal,
+          });
+          providersPayload = data?.providers ?? [];
+        }
+
+        if (controller.signal.aborted) return;
+
+        setStreamData(
+          adaptStreamData(providersPayload, {
+            title: animeTitle,
+            type: animeType,
+          }),
+        );
       } catch (err) {
+        if (err?.name === "AbortError" || controller.signal.aborted) return;
         console.error(err);
         setStreamData({ error: true });
       } finally {
-        setLoadingVideo(false);
+        if (!controller.signal.aborted) setLoadingVideo(false);
       }
     };
 
     fetchVideoStream();
-  }, [provider, animeId, episodeNumStr, audioCategory, activeServer]);
 
-  // Fetch Sidebar Info Recommendations
+    return () => controller.abort();
+  }, [
+    provider,
+    animeId,
+    episodeNumStr,
+    audioCategory,
+    activeServer,
+    animeTitle,
+    animeType,
+  ]);
+
+  // Detail lookup: resolves title/type (used by the stream payload + AllAnime
+  // showId search) and the sidebar recommendations rail.
   useEffect(() => {
-    const fetchBackupRecommendations = async () => {
+    const controller = new AbortController();
+
+    const fetchDetail = async () => {
       try {
-        const res = await fetch(`${PROXY_API_URL}/info/${animeId}`);
-        if (!res.ok) return;
-        const infoData = await res.json();
-        const recommendationsRaw =
-          infoData?.recommendations?.nodes.map(
-            (item) => item?.mediaRecommendation,
-          ) || [];
-        setRecommendations(recommendationsRaw);
+        const data = await getMediaDetail("anime", animeId, {
+          signal: controller.signal,
+        });
+        const detail = adaptDetail(data);
+        if (controller.signal.aborted) return;
+
+        setAnimeTitle(detail?.title?.english || detail?.title?.romaji || "");
+        setAnimeType(detail?.format || "TV");
+        setRecommendations(detail?.recommendations || []);
       } catch (err) {
-        console.error("Recommendations lookup failed:", err);
+        if (err?.name === "AbortError") return;
+        console.error("Detail lookup failed:", err);
       }
     };
-    if (animeId) fetchBackupRecommendations();
+
+    if (animeId) fetchDetail();
+
+    return () => controller.abort();
   }, [animeId]);
 
   // 🌟 STEP 2: EXTRACT CHUNKS AND LIVE DATA FROM PARALLEL PAYLOAD VIA MEMO
@@ -358,33 +444,7 @@ function Stream() {
     setActiveChunkIndex(0);
   }, [activeProvider]);
 
-  // 🌟 STEP 3: VIDEO LINK RETRIEVAL USING THE NEW STRIPED ROUTE PATH
-  useEffect(() => {
-    if (!provider || !animeId || !episodeNumStr || !audioCategory) return;
-
-    const fetchVideoStream = async () => {
-      try {
-        setLoadingVideo(true);
-        // Generates endpoint payload path pattern: 'api/watch/${provider}/${animeId}/${episodeNum}/${activeAudio}'
-        const res = await fetch(
-          `${PROXY_API_URL_V2}/api/watch/${provider}/${animeId}/${episodeNumStr}/${audioCategory}`,
-        );
-        if (!res.ok)
-          throw new Error("Stream player failed to query asset source link.");
-
-        const streamPayload = await res.json();
-        setStreamData(streamPayload);
-        console.log(streamPayload);
-      } catch (err) {
-        console.error(err);
-        setStreamData({ error: true });
-      } finally {
-        setLoadingVideo(false);
-      }
-    };
-
-    fetchVideoStream();
-  }, [provider, animeId, episodeNumStr, audioCategory]);
+  // (Removed a duplicate stream-fetch effect that raced with Phase 3 above.)
 
   // Persist autoplay configuration shifts to local memory instantly
   const handleToggleAutoplay = () => {
@@ -642,15 +702,13 @@ function Stream() {
             overrideData={recommendations.slice(0, 10).map((item) => ({
               id: item.id,
               mobileHref: `/anime/${item.id}`,
-              desktopHref: `/watch/anikoto/${item.id}/1/sub` /* Safely defaults destination parameters on routing click */,
-              poster: item.coverImage?.extraLarge || item.coverImage?.large,
-              title:
-                item.title?.english || item.title?.romaji || item.title?.native,
-              score: item.averageScore
-                ? (item.averageScore / 10).toFixed(1)
-                : "0.0",
-              seasonYear: item.seasonYear || item?.startDate?.year || "",
-              format: item.format || "N/A",
+              // Land on the details page; Phase 1 auto-resolves a valid source.
+              desktopHref: `/anime/${item.id}`,
+              poster: item.poster,
+              title: item.title,
+              score: item.score ? (item.score / 10).toFixed(1) : "0.0",
+              seasonYear: item.status || "",
+              animeFormat: item.episodes ? `${item.episodes} Eps` : "N/A",
             }))}
           />
         </div>

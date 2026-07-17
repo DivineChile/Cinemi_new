@@ -1,12 +1,18 @@
 import { CarouselRow } from "../../ui/CarouselRow";
+import { useHomeFeed } from "../../../hooks/useHomeFeed";
+import { toRowCard } from "../../../api";
 
 function RecentlyAdded() {
+  // Backend has no anime "browse/filter" endpoint; the home feed's `recent`
+  // bucket is the equivalent recently-released rail.
+  const { recent, loading } = useHomeFeed();
+
   return (
     <CarouselRow
-      endpoint="filter?status=RELEASING&sort=POPULARITY_DESC&year=2026"
       title="New This Week"
-      seeAllLink="/"
-      key="new"
+      seeAllLink="/discover"
+      overrideData={recent.map(toRowCard)}
+      loading={loading}
     />
   );
 }

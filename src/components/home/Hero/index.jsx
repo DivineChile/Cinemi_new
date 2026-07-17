@@ -4,11 +4,12 @@ import starIcon from "../../../images/icons/starIcon.svg";
 import playIcon from "../../../images/icons/playIcon.svg";
 import detailsIcon from "../../../images/icons/detailsIcon.svg";
 import { Link } from "react-router-dom";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { SmoothImage } from "../../ui/SmoothImage";
 import { Info, Play } from "lucide-react";
+import { useHomeFeed } from "../../../hooks/useHomeFeed";
 
 function Hero() {
   // 1. Initialize Embla Carousel with Autoplay (4 second delay)
@@ -18,55 +19,33 @@ function Hero() {
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scrollSnaps, setScrollSnaps] = useState([]);
-  const [slides, setSlides] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // const [slides, setSlides] = useState([]);
 
-  const PROXY_API_URL = import.meta.env.VITE_PROXY_API_URL;
+  // Spotlight comes from the unified /api/home anime bucket (shared, fetched once).
+  const { spotlight, loading, error: feedError } = useHomeFeed();
+  const error = feedError
+    ? "Failed to load spotlight content. Please try again later."
+    : null;
 
   const onSelect = useCallback((emblaApi) => {
     setSelectedIndex(emblaApi.selectedScrollSnap());
   }, []);
 
-  useEffect(() => {
-    const fetchSpotlight = async () => {
-      try {
-        const response = await fetch(`${PROXY_API_URL}/spotlight`);
-        if (!response.ok) {
-          setError(`API request failed with status ${response.status}`);
-        }
-        const data = await response.json();
-
-        // Target the results array, slice the first 10, and structure them
-        const rawResults = data.results || data || []; // Fallback depending on your root object mapping
-        const formattedSlides = rawResults.slice(0, 10).map((item, index) => ({
-          id: item.id,
-          title: item.title.english || item.title.romaji || item.title.native,
-          bgImage: item.bannerImage || item.coverImage.extraLarge, // Use banner, fallback to cover art
-          trending: `Trending #${index + 1}`,
-          rating: item.averageScore
-            ? (item.averageScore / 10).toFixed(1)
-            : "0.0", // Turns 89 into 8.9
-          year: item.seasonYear || item.startDate?.year || "N/A",
-          episodes: item.episodes ? `${item.episodes} Eps` : "TBA",
-          genre: item.genres?.[0] || "Anime", // Grabs the primary genre tags safely
-          // Fallback description since spotlight endpoints sometimes skip it or name it differently
-          description:
-            item.description ||
-            `Experience the spectacular continuation of ${item.title.romaji || "this epic journey"}.`,
-        }));
-
-        setSlides(formattedSlides);
-      } catch (err) {
-        console.error("Failed to load live hero spots:", err);
-        setError("Failed to load spotlight content. Please try again later.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSpotlight();
-  }, []);
+  const slides = useMemo(() => {
+    return (spotlight ?? []).slice(0, 10).map((item, index) => ({
+      id: item.id,
+      title: item.title || "Untitled",
+      bgImage: item.backdrop || item.poster,
+      trending: `Trending #${index + 1}`,
+      rating: item.rating != null ? Number(item.rating).toFixed(1) : "0.0",
+      year: item.year || "N/A",
+      episodes: item.episodes ? `${item.episodes} Eps` : "TBA",
+      genre: item.genres?.[0] || "Anime",
+      description:
+        item.description ||
+        `Experience the spectacular story of ${item.title || "this epic journey"}.`,
+    }));
+  }, [spotlight]);
 
   useEffect(() => {
     if (!emblaApi) return;

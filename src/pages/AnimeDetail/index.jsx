@@ -6,14 +6,13 @@ import MetaInfo from "../../components/animeDetail/MetaInfo";
 import { AnimeEpisodes } from "../../components/animeDetail/AnimeEpisodes";
 import { CarouselRow } from "../../components/ui/CarouselRow";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
+import { getMediaDetail, adaptDetail } from "../../api";
 
 function AnimeDetail() {
   const { animeId } = useParams();
   const [animeData, setAnimeData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const PROXY_API_URL = import.meta.env.VITE_PROXY_API_URL;
 
   // Extract clean title string parameter safely
   const pageTitle =
@@ -24,17 +23,20 @@ function AnimeDetail() {
   useDocumentTitle(pageTitle);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const getAnimeData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(`${PROXY_API_URL}/info/${animeId}`);
-        if (!response.ok) setError("Failed to retrieve anime details");
-        const data = await response.json();
+        const data = await getMediaDetail("anime", animeId, {
+          signal: controller.signal,
+        });
 
-        setAnimeData(data);
+        setAnimeData(adaptDetail(data));
       } catch (err) {
+        if (err?.name === "AbortError") return;
         console.error(err);
         setError("Something went wrong while loading this page.");
       } finally {
@@ -43,19 +45,21 @@ function AnimeDetail() {
     };
 
     if (animeId) getAnimeData();
+
+    return () => controller.abort();
   }, [animeId]);
 
-  const relatedMediaRaw = animeData?.relations?.edges.map((item) => item) || [];
-  const recommendationsRaw =
-    animeData?.recommendations?.nodes.map(
-      (item) => item?.mediaRecommendation,
-    ) || [];
+  // Relations/recommendations now carry plain string title + poster URL.
+  const relatedMediaRaw = animeData?.relations || [];
+  const recommendationsRaw = animeData?.recommendations || [];
 
   return (
     <div className="bg-(--neutral-color) min-h-screen pb-16">
       <Hero loading={loading} error={error} anime={animeData} />
       <MetaInfo loading={loading} error={error} rawApiData={animeData} />
-      <AnimeEpisodes />
+      <AnimeEpisodes
+        title={animeData?.title?.english || animeData?.title?.romaji}
+      />
 
       {relatedMediaRaw.length > 0 && (
         <CarouselRow
@@ -65,27 +69,19 @@ function AnimeDetail() {
           overrideData={relatedMediaRaw
             .filter(
               (item) =>
-                item?.relationType !== "OTHER" &&
-                item?.relationType !== "SOURCE" &&
-                item?.relationType !== "ALTERNATIVE",
+                item?.type !== "OTHER" &&
+                item?.type !== "SOURCE" &&
+                item?.type !== "ALTERNATIVE",
             )
             .map((item) => ({
-              id: item?.node?.id,
-              mobileHref: `/anime/${item?.node?.id}`,
-              desktopHref: `/watch/${item?.node?.id}`,
-              poster:
-                item?.node?.coverImage?.extraLarge ||
-                item?.node?.coverImage?.large,
-              title:
-                item?.node?.title?.english ||
-                item?.node?.title?.romaji ||
-                item?.node?.title?.native,
-              score: item?.node?.meanScore
-                ? (item?.node?.meanScore / 10).toFixed(1)
-                : "0.0",
-              // Display the specific relationship format as the card subtitle (e.g., SEQUEL · TV)
-              seasonYear: item?.node?.seasonYear || "N/A",
-              animeFormat: item?.node?.format || "N/A",
+              id: item.id,
+              mobileHref: `/anime/${item.id}`,
+              desktopHref: `/watch/${item.id}`,
+              poster: item.poster,
+              title: item.title,
+              score: item.score ? (item.score / 10).toFixed(1) : "0.0",
+              seasonYear: item.type || "N/A",
+              animeFormat: item.episodes ? `${item.episodes} Eps` : "N/A",
             }))}
         />
       )}
@@ -94,20 +90,17 @@ function AnimeDetail() {
       {recommendationsRaw.length > 0 && (
         <CarouselRow
           key="recommended"
-          title="Recommendedations"
+          title="Recommendations"
           seeAllLink="#"
           overrideData={recommendationsRaw.map((item) => ({
             id: item.id,
             mobileHref: `/anime/${item.id}`,
             desktopHref: `/watch/${item.id}`,
-            poster: item.coverImage?.extraLarge || item.coverImage?.large,
-            title:
-              item.title?.english || item.title?.romaji || item.title?.native,
-            score: item.averageScore
-              ? (item.averageScore / 10).toFixed(1)
-              : "0.0",
-            seasonYear: item?.seasonYear || "N/A",
-            animeFormat: item?.format || "N/A",
+            poster: item.poster,
+            title: item.title,
+            score: item.score ? (item.score / 10).toFixed(1) : "0.0",
+            seasonYear: item.status || "N/A",
+            animeFormat: item.episodes ? `${item.episodes} Eps` : "N/A",
           }))}
         />
       )}

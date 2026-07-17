@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Search, X, Film, Calendar, ArrowRight } from "lucide-react";
-
-const PROXY_API_URL = import.meta.env.VITE_PROXY_API_URL;
+import { search as searchApi } from "../../../api";
 
 export const SearchModal = ({ isOpen, setIsOpen }) => {
   const navigate = useNavigate();
@@ -31,22 +30,29 @@ export const SearchModal = ({ isOpen, setIsOpen }) => {
 
     setLoading(true);
 
+    const controller = new AbortController();
+
     const debounceTimer = setTimeout(async () => {
       try {
-        const response = await fetch(
-          `${PROXY_API_URL}/suggestions?query=${encodeURIComponent(searchQuery)}`,
-        );
-        if (!response.ok) throw new Error();
-        const data = await response.json();
-        setSuggestions(data.suggestions || data || []);
+        const data = await searchApi({
+          q: searchQuery,
+          page: 1,
+          provider: "miruro",
+          signal: controller.signal,
+        });
+        setSuggestions((data?.results || []).slice(0, 6));
       } catch (err) {
+        if (err?.name === "AbortError") return;
         console.error("Autocomplete failed:", err);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }, 300);
 
-    return () => clearTimeout(debounceTimer);
+    return () => {
+      clearTimeout(debounceTimer);
+      controller.abort();
+    };
   }, [searchQuery]);
 
   const handleExecuteFullSearch = (e) => {

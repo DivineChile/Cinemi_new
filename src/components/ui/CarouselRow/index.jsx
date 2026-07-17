@@ -4,18 +4,17 @@ import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
 import ContentCard from "../ContentCard";
 
-// Replace this with your actual Cloudflare Worker URL
-const PROXY_API_URL = import.meta.env.VITE_PROXY_API_URL;
-
 export const CarouselRow = ({
   title,
-  endpoint,
   seeAllLink = "/",
   overrideData = null,
+  loading = false,
 }) => {
-  const [animeList, setAnimeList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // Data is supplied by the caller already shaped for ContentCard — render it
+  // straight from props (no mirrored state; a new array reference per render
+  // would loop a setState effect infinitely).
+  const animeList = Array.isArray(overrideData) ? overrideData : [];
+  const error = null;
 
   // 1. Grab both the viewport ref and the emblaApi instance
   const [emblaRef, emblaApi] = useEmblaCarousel({
@@ -51,63 +50,7 @@ export const CarouselRow = ({
     onSelect(emblaApi);
     emblaApi.on("select", onSelect);
     emblaApi.on("reInit", onSelect);
-  }, [emblaApi, onSelect, animeList]);
-
-  useEffect(() => {
-    if (overrideData) {
-      setAnimeList(overrideData);
-      setLoading(false);
-      setError(null);
-      return; // Skip endpoint fetching entirely if data is already passed as a prop!
-    }
-
-    const fetchRowData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Dynamic endpoint routing path configuration
-        const response = await fetch(`${PROXY_API_URL}/${endpoint}`);
-        if (!response.ok) setError(`Failed to load data for: ${title}`);
-        const data = await response.json();
-
-        const rawResults = data.results || data || [];
-
-        // 1. Filter out items that contain "Hentai" in their genres array
-        const filteredResults = rawResults.filter((item) => {
-          // If the anime has no genres array, keep it by default (or adjust if needed)
-          if (!item.genres || !Array.isArray(item.genres)) return true;
-
-          // Keep the anime ONLY if "Hentai" is NOT present in its genres
-          return !item.genres.includes("Hentai");
-        });
-
-        // 2. Map over the SAFE filtered items instead of rawResults
-        const formattedData = filteredResults.map((item) => ({
-          id: item.id,
-          mobileHref: `/anime/${item.id}`,
-          desktopHref: `/watch/${item.id}`,
-          poster: item.coverImage?.extraLarge || item.coverImage?.large,
-          title:
-            item.title?.english || item.title?.romaji || item.title?.native,
-          score: item.averageScore
-            ? (item.averageScore / 10).toFixed(1)
-            : "0.0",
-          seasonYear: item.seasonYear,
-          animeFormat: item.format,
-        }));
-
-        setAnimeList(formattedData);
-      } catch (err) {
-        console.error(err);
-        setError(`Failed to load data for: ${title}`);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRowData();
-  }, [endpoint, title, overrideData]); // Re-fetch smoothly if endpoint ever changes dynamically
+  }, [emblaApi, onSelect, animeList.length]);
 
   return (
     <div className="carousel-row py-7 md:py-5 lg:py-7 xl:py-10 bg-(--neutral-color) w-full overflow-hidden">

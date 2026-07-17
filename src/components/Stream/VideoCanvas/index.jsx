@@ -13,52 +13,26 @@ export const VideoCanvas = ({
   autoplayEnabled,
   onEpisodeEnded,
 }) => {
-  // 🎰 MULTI-TIER PLAYER STATE MACHINE
+  // 🎰 PLAYER STATE MACHINE (HLS → failed). The unified backend serves direct
+  // media URLs (no embeddable page), so there is no iframe fallback tier — a
+  // failed source routes the user to the source/server switcher instead.
   const [playerTier, setPlayerTier] = useState("hls");
   const [statusMessage, setStatusMessage] = useState("");
 
-  // Callback trigger: Fires automatically if Vidstack throws an onError event
+  // Callback trigger: Fires automatically if Vidstack throws an onError event.
+  // Without an embed URL to fall back to, surface the crash screen so the user
+  // can switch source/server.
   const triggerIframeFallback = () => {
-    console.warn(
-      "⚠️ High-Level Shell: HLS player failed. Switching to Iframe...",
-    );
-    setStatusMessage(
-      "Playback optimization triggered. Auto-switching to embedded mirror player...",
-    );
-    setPlayerTier("iframe");
-  };
-
-  // 🌟 Clean, simplified routing synchronization hook
-  useEffect(() => {
-    if (!videoUrl) return;
-
-    // CONDITIONAL A: For animeheaven, skip Vidstack entirely and jump to iframe straight away
-    if (provider === "animeheaven") {
-      setPlayerTier("iframe");
-      setStatusMessage("");
-    }
-    // CONDITIONAL B: For all other providers, default cleanly back to Tier 1 HLS player
-    else {
-      setPlayerTier("hls");
-      setStatusMessage("");
-    }
-  }, [videoUrl, provider]);
-
-  // Callback trigger: Fires if the iframe layout layer also fails to load completely
-  const triggerGlobalProviderFailure = () => {
-    console.error("❌ High-Level Shell: All streaming sources have failed.");
+    console.warn("⚠️ HLS player failed; no embed fallback available.");
     setPlayerTier("failed");
   };
 
-  // Handles clearing out the recovery toast once the iframe plays
-  const handleIframeLoadSuccess = () => {
-    // Only fire a clearing timeout if there is a message active to avoid ghost rendering cycles
-    if (statusMessage) {
-      setTimeout(() => {
-        setStatusMessage("");
-      }, 2500);
-    }
-  };
+  // Reset to the HLS player whenever a fresh source URL arrives.
+  useEffect(() => {
+    if (!videoUrl) return;
+    setPlayerTier("hls");
+    setStatusMessage("");
+  }, [videoUrl, provider]);
 
   return (
     <div className="w-full aspect-video bg-black border border-white/5 shadow-2xl rounded-none md:rounded-xl overflow-hidden relative flex items-center justify-center text-white z-45">
@@ -99,25 +73,7 @@ export const VideoCanvas = ({
         />
       )}
 
-      {/* TIER 2: SECURE EMBEDDED IFRAME FALLBACK CONTAINER LAYER */}
-      {playerTier === "iframe" && videoUrl && (
-        <iframe
-          src={
-            videoUrl.includes("?")
-              ? `${videoUrl}&autoplay=1&muted=0`
-              : `${videoUrl}?autoplay=1&muted=0`
-          }
-          title="Cinemi Secondary Embedded Engine"
-          className="w-full h-full absolute inset-0 bg-black border-none"
-          allowFullScreen
-          scrolling="no"
-          allow="autoplay; encrypted-media; picture-in-picture; clipboard-write;"
-          onLoad={handleIframeLoadSuccess}
-          onError={triggerGlobalProviderFailure}
-        />
-      )}
-
-      {/* TIER 3: ABSOLUTE CRASH SCREEN */}
+      {/* TIER 2: ABSOLUTE CRASH SCREEN */}
       {playerTier === "failed" && (
         <div className="absolute inset-0 bg-neutral-950 flex flex-col items-center justify-center gap-3 text-white/40 text-[14px] font-[Inter] px-6 text-center z-40">
           <AlertCircle size={36} className="text-[#b11226]" />

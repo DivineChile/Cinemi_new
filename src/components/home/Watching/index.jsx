@@ -63,7 +63,8 @@ export const Watching = () => {
               anime.durationSeconds > 0
                 ? (anime.progressSeconds / anime.durationSeconds) * 100
                 : 0;
-            const watchPath = `/watch/${anime.provider}/${anime.id}/${anime.category}/${anime.slug}`;
+            // Route schema: /watch/:provider/:id/:episode/:category
+            const watchPath = `/watch/${anime.provider}/${anime.id}/${anime.episodeNumber}/${anime.category}`;
 
             return (
               <WatchCard

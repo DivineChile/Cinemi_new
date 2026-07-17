@@ -9,12 +9,16 @@ import {
   AlertCircle,
   ChevronDown,
 } from "lucide-react";
+import {
+  anime as animeApi,
+  ANIME_SOURCES,
+  adaptEpisodeData,
+  adaptAllAnimeEpisodeSource,
+} from "../../../api";
 
-const PROXY_API_URL = import.meta.env.VITE_PROXY_API_URL;
-const PROXY_API_URL_V2 = import.meta.env.VITE_PROXY_API_URL_V2;
 const EPISODES_PER_PAGE = 50; // Define chunk sizes (100 is standard)
 
-export const AnimeEpisodes = () => {
+export const AnimeEpisodes = ({ title }) => {
   const { animeId } = useParams(); // AniList ID from route url
   const [episodeData, setEpisodeData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,94 +32,71 @@ export const AnimeEpisodes = () => {
   const [activeChunkIndex, setActiveChunkIndex] = useState(0);
   const [isCollapsed, setIsCollapsed] = useState(window.innerWidth < 768);
 
-  const miruroWorkingProviders = ["bonk", "bee", "pewe"];
-  const anivaultWorkingProviders = ["senshi", "animeheaven", "anikoto"];
-
-  // Fetch episodes dataset matching your 3-Step Streaming Flow
+  // Fetch episode lists from AniVault sources (senshi/animeheaven/anikoto) plus
+  // AllAnime (resolved via exact-title search → showId). Miruro is Cloudflare-
+  // blocked for playback, so it isn't used here.
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchEpisodes = async () => {
       try {
         setLoading(true);
         setError(null);
-        console.log("Fetching Episodes for:", animeId);
 
-        // 1. Dynamically create promises for all providers in parallel
-        const fetchPromises = anivaultWorkingProviders.map((provider) =>
-          fetch(
-            `${PROXY_API_URL_V2}/api/episodes?anilistId=${animeId}&source=${provider}`,
-          ),
-        );
+        const [anivaultResult, allanimeResult] = await Promise.allSettled([
+          animeApi.episodes(animeId, {
+            sources: ANIME_SOURCES,
+            signal: controller.signal,
+          }),
+          title
+            ? animeApi.allanimeEpisodes(title, { signal: controller.signal })
+            : Promise.resolve(null),
+        ]);
 
-        // 2. Await the initial network responses safely
-        const fetchResults = await Promise.allSettled(fetchPromises);
+        const sources = [];
 
-        // 3. Map fulfilled responses to their respective JSON parsing promises
-        const jsonPromises = fetchResults.map(async (result, index) => {
-          const providerName = anivaultWorkingProviders[index];
+        if (anivaultResult.status === "fulfilled" && anivaultResult.value) {
+          sources.push(...adaptEpisodeData(anivaultResult.value));
+        }
 
-          if (result.status === "fulfilled" && result.value.ok) {
-            try {
-              const payload = await result.value.json();
-              // Return structured object mapping provider name to data
-              return { provider: providerName, data: payload, success: true };
-            } catch (jsonErr) {
-              console.error(
-                `Failed parsing JSON for ${providerName}:`,
-                jsonErr,
-              );
-              return {
-                provider: providerName,
-                error: "Malformed JSON",
-                success: false,
-              };
-            }
-          } else {
-            console.warn(
-              `Network request failed for provider: ${providerName}`,
-            );
-            return {
-              provider: providerName,
-              error: result.reason?.message || "Network Error",
-              success: false,
-            };
-          }
-        });
+        if (allanimeResult.status === "fulfilled" && allanimeResult.value) {
+          const entry = adaptAllAnimeEpisodeSource(
+            allanimeResult.value.grouped,
+            activeAudio,
+          );
+          if (entry) sources.push(entry);
+        }
 
-        // 4. Resolve all JSON parsing operations in parallel
-        const parsedResults = await Promise.all(jsonPromises);
+        if (controller.signal.aborted) return;
 
-        // 5. Update your state with the final array of objects
-        setEpisodeData(parsedResults);
-        console.log(parsedResults);
+        setEpisodeData(sources);
 
-        // 6. Auto-select logic using your newly mapped array
-        const successfulFetches = parsedResults.filter((item) => item.success);
+        const successfulFetches = sources.filter((item) => item.success);
 
         if (successfulFetches.length > 0) {
-          // Build an array of successfully resolved provider names
           const realProviders = successfulFetches.map((item) => item.provider);
-          console.log(realProviders);
-
-          // Your original matching conditional logic applied to active states
-          if (realProviders.includes("senshi")) {
-            // Swapped 'bee' example context with your working list
-            setActiveProvider("senshi");
-          } else {
-            setActiveProvider(realProviders[0]);
-          }
+          setActiveProvider(
+            realProviders.includes("senshi") ? "senshi" : realProviders[0],
+          );
         } else {
           throw new Error("All provider requests failed.");
         }
       } catch (err) {
+        if (err?.name === "AbortError" || controller.signal.aborted) return;
         console.error(err);
         setError("Episodes for this title could not be fetched.");
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
     if (animeId) fetchEpisodes();
-  }, [animeId]);
+
+    return () => controller.abort();
+    // activeAudio intentionally omitted: AllAnime sub/dub reselection is handled
+    // by the memo below off the already-fetched grouped data.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [animeId, title]);
 
   // Reset pagination index if user changes source provider or audio settings
   useEffect(() => {

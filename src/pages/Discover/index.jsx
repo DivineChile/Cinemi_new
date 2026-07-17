@@ -5,8 +5,7 @@ import AdvancedFilterBar from "../../components/discover/AdvancedFilterBar";
 import ActiveResultsLayout from "../../components/discover/ActiveResultsLayout";
 import PaginationControls from "../../components/discover/PaginationControls";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
-
-const PROXY_API_URL = import.meta.env.VITE_PROXY_API_URL;
+import { search as searchApi, browseAnime } from "../../api";
 
 export default function Discover() {
   // 1. React Router search parameters synchronization hook
@@ -63,47 +62,44 @@ export default function Discover() {
   }, [searchParams]);
 
   // 🌟 2. THE CORE DISCOVERY PIPELINE FETCH LAYER
+  // SCENARIO A: text query → /api/search (Miruro, AniList-backed).
+  // SCENARIO B: filters or default catalog → /api/browse?type=anime (Miruro
+  // /filter) — powers genre cards from home, advanced filters, and the default
+  // POPULARITY_DESC catalog when nothing is selected.
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchCatalogData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        let endpointUrl = "";
+        let data;
 
-        // SCENARIO A: Text query matching coming from the SearchModal autocomplete input
         if (currentQuery) {
-          const queryParams = new URLSearchParams({
-            query: currentQuery,
-            page: currentPage.toString(),
-            per_page: filters.per_page,
+          data = await searchApi({
+            q: currentQuery,
+            page: currentPage,
+            provider: "miruro",
+            signal: controller.signal,
           });
-          endpointUrl = `${PROXY_API_URL}/search?${queryParams.toString()}`;
-        }
-        // SCENARIO B: Advanced filtration matching / Home Page Genre Exploration cards click redirects
-        else {
-          const filterParams = new URLSearchParams();
-          // Build request parameters dynamically—only appending options that are actively chosen
+        } else {
+          const activeFilters = {};
+          // Only append options that are actively chosen (skip per_page — the
+          // backend forwards perPage separately).
           Object.entries(filters).forEach(([key, val]) => {
-            if (val) filterParams.append(key, val);
+            if (val && key !== "per_page") activeFilters[key] = val;
           });
-          filterParams.append("page", currentPage.toString());
 
-          endpointUrl = `${PROXY_API_URL}/filter?${filterParams.toString()}`;
+          data = await browseAnime(
+            { ...activeFilters, page: currentPage, perPage: filters.per_page },
+            { signal: controller.signal },
+          );
         }
 
-        console.log("🌐 Discover Pipeline Fetching:", endpointUrl);
-        const response = await fetch(endpointUrl);
-        if (!response.ok)
-          throw new Error(
-            "Failed to secure connection to the catalog database.",
-          );
-        const data = await response.json();
+        const rawResults = data?.results || [];
 
-        // Target raw payload data arrays safely
-        const rawResults = data.results || data || [];
-
-        // Defensive pre-mapping gatekeeper filter: Exclude mature content parameters automatically
+        // Defensive gatekeeper: exclude mature content automatically.
         const verifiedResults = rawResults.filter(
           (item) =>
             !item.genres ||
@@ -111,23 +107,32 @@ export default function Discover() {
             !item.genres.includes("Hentai"),
         );
 
+        if (controller.signal.aborted) return;
+
+        // search returns { page, totalPages }; browse returns { pagination }.
+        const totalPages =
+          data?.pagination?.totalPages ?? data?.totalPages ?? 1;
+
         setResultsData({
           results: verifiedResults,
-          total: data.total || verifiedResults.length,
-          hasNextPage: data.hasNextPage || false,
+          total: verifiedResults.length,
+          hasNextPage: currentPage < totalPages,
         });
       } catch (err) {
+        if (err?.name === "AbortError" || controller.signal.aborted) return;
         console.error(err);
         setError(
           "Database catalog data could not be retrieved. Please try refreshing.",
         );
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
     fetchCatalogData();
-  }, [currentQuery, currentPage, filters]); // 🚀 Seamlessly re-fires immediately whenever a user interacts with filters or pages
+
+    return () => controller.abort();
+  }, [currentQuery, currentPage, filters]); // 🚀 Re-fires whenever a user interacts with filters or pages
 
   // 🌟 3. GLOBAL ROUTE PARAMETER REWRITER METHODS
   // Updates browser search strings synchronously so bookmark links remain functional

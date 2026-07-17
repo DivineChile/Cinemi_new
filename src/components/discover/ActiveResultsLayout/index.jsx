@@ -62,16 +62,16 @@ export default function ActiveResultsLayout({ results = [], loading, error }) {
       {results.map((anime) => {
         const mobileHref = `/anime/${anime.id}`;
         const desktopHref = `/watch/${anime.id}`;
+        // Backend MediaCard: { id, title (string), poster, year, rating, format }
         const animeTitle =
-          anime?.title?.english || anime?.title?.romaji || "Anime";
+          typeof anime?.title === "string"
+            ? anime.title
+            : anime?.title?.english || anime?.title?.romaji || "Anime";
 
-        const animePoster = anime?.coverImage?.large;
+        const animePoster = anime?.poster ?? anime?.backdrop ?? null;
         const animeScore =
-          (anime?.averageScore / 10).toFixed(1) ||
-          (anime?.meanScore / 10).toFixed(1) ||
-          "0.0";
-        const animeSeasonYear =
-          anime?.seasonYear || anime?.startDate?.year || "N/A";
+          anime?.rating != null ? Number(anime.rating).toFixed(1) : "0.0";
+        const animeSeasonYear = anime?.year || "N/A";
         const animeFormat = anime?.format;
 
         return (

@@ -37,6 +37,14 @@ export const Player = ({
 
   const currentEpInt = parseInt(episodeStr, 10) || 1;
 
+  const params = new URLSearchParams({
+    url: videoUrl,
+    referer: "https://allanimenews.com",
+  });
+
+  const mainUrl = `https://another-proxy.fly.dev/?${params.toString()}`;
+  console.log(videoUrl);
+
   // Clear timers and resets tracking whenever a new source URL attaches
   useEffect(() => {
     setIsBuffering(false);
@@ -143,7 +151,7 @@ export const Player = ({
         ref={playerRef}
         // 🌟 FIX 2: Bypassed duplicate proxies. Binds the raw, already-proxied prop directly.
         src={{
-          src: videoUrl,
+          src: mainUrl,
           type: "application/x-mpegurl",
         }}
         viewType="video"
@@ -259,4 +267,4 @@ export const Player = ({
       </MediaPlayer>
     </div>
   );
-};;;
+};
